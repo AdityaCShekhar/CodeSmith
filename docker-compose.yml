@@ -27,8 +27,9 @@ services:
     environment:
       - OLLAMA_URL=http://ollama:11434
     volumes:
+      - .:/work
       - ./workspace:/workspace
-    working_dir: /app
+    working_dir: /work
     stdin_open: true
     tty: true
 

@@ -1,2 +1,3 @@
 requests==2.31.0
 Pygments==2.17.0
+prompt-toolkit==3.0.36

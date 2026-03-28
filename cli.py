@@ -4,8 +4,15 @@
 import sys
 import argparse
 import traceback
-from typing import Optional
+from typing import Optional, List
 from pathlib import Path
+
+from prompt_toolkit import PromptSession
+from prompt_toolkit.completion import Completer, Completion
+from prompt_toolkit.history import FileHistory
+from prompt_toolkit.document import Document
+from prompt_toolkit.formatted_text import FormattedText
+from prompt_toolkit.styles import Style
 
 from llm import OllamaClient, OllamaError
 from tools import FileTools, ShellTools, ContextInjector, ToolsError
@@ -46,25 +53,174 @@ class DeepXCLI:
             self._print_error(f"Failed to connect: {str(e)}")
             sys.exit(1)
 
+    def _get_command_suggestions(self, partial: str = "") -> List[str]:
+        """Get command suggestions for autocomplete."""
+        all_commands = [
+            "read", "write", "run", "context", "models", "help", "exit"
+        ]
+        
+        if not partial:
+            return all_commands
+        
+        return [cmd for cmd in all_commands if cmd.startswith(partial)]
+
+    def _get_files(self, partial: str = "") -> List[str]:
+        """Get available files in current working directory."""
+        try:
+            # Search in the mounted current working directory
+            workspace_paths = [
+                Path("/work"),       # Current working directory mount
+                Path("."),           # Current directory in container
+                Path("/workspace"),  # Fallback to workspace
+            ]
+            
+            workspace_dir = None
+            for path in workspace_paths:
+                if path.exists() and path.is_dir():
+                    try:
+                        # Make sure we can read it
+                        list(path.iterdir())
+                        workspace_dir = path
+                        break
+                    except (OSError, PermissionError):
+                        continue
+            
+            if not workspace_dir:
+                return []
+            
+            files = []
+            skip_dirs = {".git", "__pycache__", ".venv", "node_modules", ".pytest_cache", ".docker", ".idea", "dist", "build", ".vscode", ".mypy_cache", ".env"}
+            skip_extensions = {".pyc", ".pyo", ".so", ".egg-info"}
+            skip_prefixes = {".", "~"}
+            
+            # Recursively find files with depth limit
+            max_depth = 3
+            
+            def walk_dir(directory, current_depth=0):
+                if current_depth > max_depth:
+                    return
+                try:
+                    for item in sorted(directory.iterdir()):
+                        try:
+                            # Skip hidden items
+                            if item.name.startswith("."):
+                                continue
+                            
+                            # Skip certain directories
+                            if item.is_dir() and item.name in skip_dirs:
+                                continue
+                            
+                            if item.is_file():
+                                # Skip certain file types
+                                if item.suffix in skip_extensions:
+                                    continue
+                                
+                                try:
+                                    rel_path = str(item.relative_to(workspace_dir))
+                                    # Fuzzy match - contains partial as substring
+                                    if not partial or partial.lower() in rel_path.lower():
+                                        files.append(rel_path)
+                                except ValueError:
+                                    pass
+                            
+                            elif item.is_dir() and current_depth < max_depth:
+                                walk_dir(item, current_depth + 1)
+                        except (OSError, PermissionError):
+                            continue
+                except (OSError, PermissionError):
+                    pass
+            
+            walk_dir(workspace_dir)
+            return sorted(set(files))[:20]  # Return top 20
+        except Exception:
+            return []
+
+    def _get_command_descriptions(self) -> dict:
+        """Get command descriptions for autocomplete display."""
+        return {
+            "read": "View file contents",
+            "write": "Save code to file",
+            "run": "Execute shell command",
+            "context": "Manage file context",
+            "models": "List available models",
+            "help": "Show full help",
+            "exit": "Exit the application"
+        }
+
+    def _setup_prompt_session(self):
+        """Setup prompt session with custom completer."""
+        history_file = Path.home() / ".deepx_history"
+        
+        # Style that matches terminal theme
+        style = Style.from_dict({
+            'completion-menu': 'bg:#333333 #cccccc',
+            'completion-menu.completion': '#cccccc',
+            'completion-menu.completion.current': 'bg:#0066ff #ffffff bold',
+        })
+        
+        class CommandCompleter(Completer):
+            """Custom completer for DeepX commands."""
+            def __init__(self, cli_instance):
+                self.cli = cli_instance
+            
+            def get_completions(self, document: Document, complete_event):
+                """Generate completions based on input."""
+                text = document.text_before_cursor
+                
+                # Handle command suggestions with /
+                if text.startswith("/"):
+                    partial = text[1:].lower()
+                    suggestions = self.cli._get_command_suggestions(partial)
+                    descriptions = self.cli._get_command_descriptions()
+                    
+                    for cmd in suggestions:
+                        yield Completion(
+                            cmd + " ",
+                            start_position=-len(partial),
+                            display_meta=descriptions.get(cmd, "")
+                        )
+                
+                # Handle file suggestions with @
+                elif text.startswith("@"):
+                    partial = text[1:]  # Don't lowercase for file paths
+                    files = self.cli._get_files(partial)
+                    
+                    if files:  # Only yield if we have files
+                        for filepath in files:
+                            yield Completion(
+                                "@" + filepath,
+                                start_position=-(len(partial)+1),
+                                display_meta="Add to context"
+                            )
+        
+        return PromptSession(
+            completer=CommandCompleter(self),
+            history=FileHistory(str(history_file)),
+            enable_history_search=True,
+            mouse_support=False,
+            complete_while_typing=True,
+            style=style,
+        )
+
     def _print_info(self, message: str) -> None:
         """Print info message."""
-        print(f"{COLOR_CYAN}ℹ {message}{COLOR_RESET}")
+        print(f"\033[36mℹ {message}\033[0m")
 
     def _print_success(self, message: str) -> None:
         """Print success message."""
-        print(f"{COLOR_GREEN}✓ {message}{COLOR_RESET}")
+        print(f"\033[32m✓ {message}\033[0m")
 
     def _print_error(self, message: str) -> None:
         """Print error message."""
-        print(f"{COLOR_RED}✗ {message}{COLOR_RESET}")
+        print(f"\033[31m✗ {message}\033[0m")
 
     def _print_header(self, title: str) -> None:
         """Print formatted header."""
-        print(f"\n{COLOR_BOLD}{COLOR_CYAN}━━ {title} ━━{COLOR_RESET}")
+        print(f"\n\033[1m\033[36m━━ {title} ━━\033[0m")
 
     def _format_code_block(self, code: str, language: str = "python") -> str:
         """Format code for display."""
-        return f"{COLOR_GRAY}```{language}\n{COLOR_RESET}{code}{COLOR_GRAY}\n```{COLOR_RESET}"
+        return f"\033[90m```{language}\n\033[0m{code}\033[90m\n```\033[0m"
 
     def handle_generate(self, prompt: str, stream: bool = True) -> str:
         """Generate code from prompt.
@@ -110,7 +266,7 @@ class DeepXCLI:
         Args:
             filepath: Target file path
         """
-        print(f"{COLOR_BOLD}Enter content (Ctrl+D to save):{COLOR_RESET}")
+        print(f"\033[1mEnter content (Ctrl+D to save):\033[0m")
         lines = []
         try:
             while True:
@@ -203,12 +359,26 @@ class DeepXCLI:
         except OllamaError as e:
             self._print_error(str(e))
 
+    def _show_command_suggestions(self) -> None:
+        """Show quick command suggestions."""
+        suggestions = f"""
+\033[1mAvailable Commands:\033[0m
+  \033[36m/write\033[0m <filename>     Save code to file
+  \033[36m/read\033[0m <filename>      View file contents
+  \033[36m/run\033[0m <command>        Execute shell command
+  \033[36m/context\033[0m              Manage file context
+  \033[36m/models\033[0m               List available models
+  \033[36m/help\033[0m                 Show this help
+  \033[36m/exit\033[0m                 Exit
+"""
+        print(suggestions)
+
     def print_help(self) -> None:
         """Print help message."""
         help_text = f"""
-{COLOR_BOLD}DeepX - Code Generation CLI{COLOR_RESET}
+\033[1mDeepX - Code Generation CLI\033[0m
 
-{COLOR_BOLD}Commands:{COLOR_RESET}
+\033[1mCommands:\033[0m
   /write <filename>     Write input to file
   /read <filename>      Read and display file
   /run <command>        Execute shell command
@@ -219,11 +389,11 @@ class DeepXCLI:
   /help                Show this help
   /exit                Exit the application
 
-{COLOR_BOLD}Usage:{COLOR_RESET}
+\033[1mUsage:\033[0m
   Simply type your code generation prompts and press Enter.
   The AI will generate code based on your request.
   
-{COLOR_BOLD}Example:{COLOR_RESET}
+\033[1mExample:\033[0m
   > Write a Python function to calculate factorial
   > /context add utils.py
   > /read utils.py
@@ -235,68 +405,135 @@ class DeepXCLI:
     def repl(self) -> None:
         """Run interactive REPL loop."""
         self._print_header("DeepX - Code Generation CLI")
+        self._print_info("Type / then press Tab to see commands")
+        self._print_info("Type @ then press Tab to see files for context")
         self._print_info("Type /help for available commands")
         print()
+        
+        # Setup prompt session with autocomplete
+        session = self._setup_prompt_session()
 
-        while True:
-            try:
-                user_input = input(f"{COLOR_BOLD}> {COLOR_RESET}").strip()
+        try:
+            while True:
+                try:
+                    # Get input with live suggestions
+                    user_input = session.prompt(FormattedText([("bold", "> ")])).strip()
 
-                if not user_input:
-                    continue
+                    if not user_input:
+                        continue
 
-                # Handle commands
-                if user_input.startswith("/"):
-                    parts = user_input.split(None, 1)
-                    command = parts[0][1:]  # Remove the /
-                    args = parts[1] if len(parts) > 1 else ""
+                    # Show suggestions if just "/"
+                    if user_input == "/":
+                        self._show_command_suggestions()
+                        continue
 
-                    if command == "exit":
-                        self._print_info("Goodbye!")
-                        break
+                    # Handle commands
+                    if user_input.startswith("/"):
+                        parts = user_input.split(None, 1)
+                        command = parts[0][1:]  # Remove the /
+                        args = parts[1] if len(parts) > 1 else ""
 
-                    elif command == "help":
-                        self.print_help()
+                        if command == "exit":
+                            self._print_info("Goodbye!")
+                            break
 
-                    elif command == "read":
-                        if args:
-                            self.handle_read(args)
+                        elif command == "help":
+                            self.print_help()
+
+                        elif command == "read":
+                            if args:
+                                self.handle_read(args)
+                            else:
+                                self._print_error("Usage: /read <filename>")
+
+                        elif command == "write":
+                            if args:
+                                self.handle_write(args)
+                            else:
+                                self._print_error("Usage: /write <filename>")
+
+                        elif command == "run":
+                            if args:
+                                self.handle_run(args)
+                            else:
+                                self._print_error("Usage: /run <command>")
+
+                        elif command == "context":
+                            context_args = args.split() if args else []
+                            self.handle_context(context_args)
+
+                        elif command == "models":
+                            self.handle_models()
+
+                        elif command == "debug-files":
+                            # Debug command to show discovered files
+                            workspace_paths = [
+                                Path("/work"),
+                                Path("."),
+                                Path("/workspace"),
+                            ]
+                            
+                            search_dir = None
+                            for path in workspace_paths:
+                                if path.exists():
+                                    search_dir = path
+                                    break
+                            
+                            self._print_info(f"Searching in: {search_dir}")
+                            
+                            files = self._get_files()
+                            if files:
+                                self._print_header("Available Files for @context")
+                                for f in files[:15]:
+                                    print(f"  @{f}")
+                            else:
+                                self._print_error("No files found in current directory")
+
                         else:
-                            self._print_error("Usage: /read <filename>")
-
-                    elif command == "write":
-                        if args:
-                            self.handle_write(args)
-                        else:
-                            self._print_error("Usage: /write <filename>")
-
-                    elif command == "run":
-                        if args:
-                            self.handle_run(args)
-                        else:
-                            self._print_error("Usage: /run <command>")
-
-                    elif command == "context":
-                        context_args = args.split() if args else []
-                        self.handle_context(context_args)
-
-                    elif command == "models":
-                        self.handle_models()
+                            self._print_error(f"Unknown command: /{command}")
 
                     else:
-                        self._print_error(f"Unknown command: /{command}")
+                        # Regular prompt for code generation
+                        # Check for @file mentions and add to context
+                        files_mentioned = []
+                        words = user_input.split()
+                        for word in words:
+                            if word.startswith("@"):
+                                filepath = word[1:]  # Remove @
+                                files_mentioned.append(filepath)
+                        
+                        # Add files to context temporarily for this generation
+                        original_context = self.context_files.copy()
+                        for filepath in files_mentioned:
+                            if filepath not in self.context_files:
+                                try:
+                                    FileTools.read_file(filepath)  # Verify exists
+                                    self.context_files.append(filepath)
+                                    self._print_success(f"Added {filepath} to context for this prompt")
+                                except ToolsError:
+                                    pass
+                        
+                        # Remove @ mentions from prompt
+                        clean_prompt = " ".join([w for w in words if not w.startswith("@")])
+                        
+                        if clean_prompt.strip():
+                            self.handle_generate(clean_prompt, stream=True)
+                        
+                        # Restore original context
+                        self.context_files = original_context
 
-                else:
-                    # Regular prompt for code generation
-                    self.handle_generate(user_input, stream=True)
-
-            except KeyboardInterrupt:
-                print()
-                self._print_info("Interrupted by user")
-                continue
-            except Exception as e:
-                self._print_error(f"Unexpected error: {str(e)}")
-                traceback.print_exc()
+                except KeyboardInterrupt:
+                    print()
+                    self._print_info("Interrupted by user")
+                    continue
+                except EOFError:
+                    self._print_info("Goodbye!")
+                    break
+                except Exception as e:
+                    self._print_error(f"Unexpected error: {str(e)}")
+                    traceback.print_exc()
+        except KeyboardInterrupt:
+            pass
 
     def run_single(self, prompt: str) -> None:
         """Run a single generation and exit.

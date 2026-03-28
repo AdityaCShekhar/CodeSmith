@@ -3,14 +3,16 @@
 # Place this in /usr/local/bin or add project to PATH
 
 PROJECT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+USER_PWD="$(pwd)"
 
 # Check if running with Docker Compose (default)
 if command -v docker-compose &> /dev/null && [ -f "$PROJECT_DIR/docker-compose.yml" ]; then
     # Check if services are running
     if docker-compose -f "$PROJECT_DIR/docker-compose.yml" ps ollama 2>/dev/null | grep -q "Up"; then
-        # Services are running, use them
+        # Services are running, mount the user's current directory and use it
+        export WORK_DIR="$USER_PWD"
         cd "$PROJECT_DIR"
-        exec docker-compose run --rm deepx-cli "$@"
+        exec docker-compose run --rm -e WORK_DIR="$WORK_DIR" -v "$USER_PWD:/work" deepx-cli "$@"
     fi
 fi
 
