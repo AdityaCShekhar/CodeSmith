@@ -1,0 +1,37 @@
+version: '3.8'
+
+services:
+  ollama:
+    image: ollama/ollama:latest
+    container_name: deepx-ollama
+    ports:
+      - "11434:11434"
+    environment:
+      - OLLAMA_HOST=0.0.0.0:11434
+    volumes:
+      - ollama_data:/root/.ollama
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:11434/api/tags", "||", "exit", "1"]
+      interval: 5s
+      timeout: 10s
+      retries: 30
+      start_period: 30s
+    stdin_open: true
+    tty: true
+
+  deepx-cli:
+    build: .
+    depends_on:
+      ollama:
+        condition: service_started
+    environment:
+      - OLLAMA_URL=http://ollama:11434
+    volumes:
+      - ./workspace:/workspace
+    working_dir: /app
+    stdin_open: true
+    tty: true
+
+volumes:
+  ollama_data:
+

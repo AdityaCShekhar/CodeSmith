@@ -1,0 +1,64 @@
+#!/bin/bash
+# DeepX Automation Script
+# Usage: deepx-gen <output_file> "<prompt>"
+# Example: deepx-gen quicksort.py "Write a Python script to sort using quicksort"
+
+PROJECT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+if [ $# -lt 2 ]; then
+    echo "Usage: deepx-gen <output_file> \"<prompt>\""
+    echo ""
+    echo "Examples:"
+    echo "  deepx-gen quicksort.py \"Write a quicksort function\""
+    echo "  deepx-gen api.py \"Create a Flask REST API\""
+    echo "  deepx-gen test.py \"Write unit tests for factorial\""
+    exit 1
+fi
+
+OUTPUT_FILE="$1"
+PROMPT="$2"
+
+# Check if Ollama is running
+if ! docker-compose -f "$PROJECT_DIR/docker-compose.yml" ps ollama 2>/dev/null | grep -q "Up"; then
+    echo "Starting Ollama..."
+    docker-compose -f "$PROJECT_DIR/docker-compose.yml" up -d ollama
+    sleep 5
+fi
+
+echo "Generating: $PROMPT"
+echo "Saving to: $OUTPUT_FILE"
+echo ""
+
+# Run Python script to generate and save
+python3 << 'EOF'
+import sys
+import os
+sys.path.insert(0, os.environ.get('PROJECT_DIR', '.'))
+
+from llm import OllamaClient
+from tools import FileTools
+
+output_file = sys.argv[1]
+prompt = sys.argv[2]
+
+try:
+    # Connect to Ollama
+    client = OllamaClient("http://ollama:11434", "deepseek-coder:1.3b")
+    
+    print(f"🚀 Generating code...")
+    print("-" * 50)
+    
+    # Generate code (non-streaming for automation)
+    code = client.generate(prompt, stream=False)
+    
+    print(code)
+    print("-" * 50)
+    
+    # Save to file
+    result = FileTools.write_file(output_file, code)
+    print(f"\n✓ {result}")
+    
+except Exception as e:
+    print(f"✗ Error: {e}")
+    sys.exit(1)
+EOF

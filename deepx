@@ -1,0 +1,24 @@
+#!/bin/bash
+# DeepX CLI wrapper script
+# Place this in /usr/local/bin or add project to PATH
+
+PROJECT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# Check if running with Docker Compose (default)
+if command -v docker-compose &> /dev/null && [ -f "$PROJECT_DIR/docker-compose.yml" ]; then
+    # Check if services are running
+    if docker-compose -f "$PROJECT_DIR/docker-compose.yml" ps ollama 2>/dev/null | grep -q "Up"; then
+        # Services are running, use them
+        cd "$PROJECT_DIR"
+        exec docker-compose run --rm deepx-cli "$@"
+    fi
+fi
+
+# Fall back to local Python
+if [ -f "$PROJECT_DIR/cli.py" ]; then
+    cd "$PROJECT_DIR"
+    exec python3 cli.py "$@"
+else
+    echo "Error: DeepX not found at $PROJECT_DIR"
+    exit 1
+fi

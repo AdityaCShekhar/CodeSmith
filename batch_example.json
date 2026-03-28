@@ -1,0 +1,20 @@
+{
+  "tasks": [
+    {
+      "output": "quicksort.py",
+      "prompt": "Write a Python implementation of quicksort with examples and documentation"
+    },
+    {
+      "output": "mergesort.py",
+      "prompt": "Write a Python implementation of merge sort algorithm with test cases"
+    },
+    {
+      "output": "api.py",
+      "prompt": "Create a simple Flask REST API with GET and POST endpoints"
+    },
+    {
+      "output": "tests.py",
+      "prompt": "Write unit tests for the sorting algorithms using pytest"
+    }
+  ]
+}
