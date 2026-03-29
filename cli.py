@@ -4,6 +4,12 @@
 import sys
 import argparse
 import traceback
+import time
+import os
+import signal
+import termios
+import tty
+import select
 from typing import Optional, List
 from pathlib import Path
 
@@ -17,6 +23,13 @@ from prompt_toolkit.styles import Style
 from llm import OllamaClient, OllamaError
 from tools import FileTools, ShellTools, ContextInjector, ToolsError
 
+try:
+    import requests
+except ImportError:
+    # If requests isn't available, try to import urllib
+    import urllib.request
+    requests = None
+
 # ANSI color codes
 COLOR_RESET = "\033[0m"
 COLOR_BOLD = "\033[1m"
@@ -25,6 +38,179 @@ COLOR_GREEN = "\033[32m"
 COLOR_YELLOW = "\033[33m"
 COLOR_RED = "\033[31m"
 COLOR_GRAY = "\033[90m"
+
+
+# ============================================================================
+# Initialization Functions (migrated from init.py)
+# ============================================================================
+
+def wait_for_ollama(host: str = "http://ollama:11434", timeout: int = 120) -> bool:
+    """Wait for Ollama to be ready (with extended timeout)."""
+    print(f"⏳ Waiting for Ollama at {host}...")
+    start = time.time()
+    attempt = 0
+    
+    while time.time() - start < timeout:
+        attempt += 1
+        try:
+            if requests:
+                response = requests.get(f"{host}/api/tags", timeout=5)
+                if response.status_code == 200:
+                    print("✓ Ollama is ready")
+                    return True
+            else:
+                # Fallback using urllib
+                urllib.request.urlopen(f"{host}/api/tags", timeout=5)
+                print("✓ Ollama is ready")
+                return True
+        except Exception as e:
+            if attempt % 10 == 0:
+                elapsed = int(time.time() - start)
+                print(f"  Still waiting... ({elapsed}s elapsed)")
+        time.sleep(1)
+    
+    print("❌ Ollama did not start in time")
+    return False
+
+
+def pull_model(model: str = "deepseek-coder:1.3b", host: str = "http://ollama:11434") -> bool:
+    """Pull model if not already available."""
+    try:
+        print(f"\n📦 Checking for model: {model}")
+        
+        if not requests:
+            print("⚠️  Cannot check model without requests library")
+            print("   Starting CLI anyway - model may be pulling in background")
+            return True
+        
+        # Check if model exists
+        response = requests.get(f"{host}/api/tags", timeout=10)
+        if response.status_code != 200:
+            raise Exception(f"API returned {response.status_code}")
+        
+        models = response.json().get("models", [])
+        model_names = [m.get("name", "") for m in models]
+        
+        # Check if our model is in the list
+        if any(model in name for name in model_names):
+            print(f"✓ Model '{model}' already available")
+            print(f"  Available models: {', '.join(model_names)}")
+            return True
+        
+        print(f"📥 Pulling {model}...")
+        print(f"   (This may take 2-5 minutes on first run)")
+        
+        # Initiate model pull
+        response = requests.post(
+            f"{host}/api/pull",
+            json={"name": model},
+            timeout=600,
+            stream=True
+        )
+        
+        if response.status_code == 200:
+            # Stream the pull progress
+            for line in response.iter_lines():
+                if line:
+                    try:
+                        import json
+                        data = json.loads(line)
+                        if "status" in data and "digest" in data:
+                            status = data["status"]
+                            if status in ["downloading", "verifying", "writing"]:
+                                print(f"   {status}...", end="\r")
+                    except:
+                        pass
+            print(f"✓ Model '{model}' ready               ")
+            return True
+        else:
+            print(f"⚠️  Model pull returned status {response.status_code}")
+            print("   Starting CLI anyway - model may be pulling in background")
+            return True
+            
+    except requests.exceptions.Timeout:
+        print("⚠️  Model pull timed out")
+        print("   Starting CLI anyway - model may still be pulling")
+        return True
+    except Exception as e:
+        print(f"⚠️  Could not verify/pull model: {e}")
+        print("   Starting CLI anyway - model may be pulling in background")
+        return True
+
+
+def initialize_system(ollama_url: str = "http://ollama:11434", model: str = "deepseek-coder:1.3b") -> bool:
+    """Initialize and prepare the system for DeepX.
+    
+    Args:
+        ollama_url: URL of Ollama server
+        model: Model to use
+        
+    Returns:
+        True if initialization successful, False otherwise
+    """
+    print("\n" + "=" * 50)
+    print("🚀 DeepX Initialization")
+    print("=" * 50)
+    
+    # Wait for Ollama (extended timeout)
+    if not wait_for_ollama(ollama_url, timeout=120):
+        print("❌ Cannot connect to Ollama after 2 minutes")
+        print(f"   Make sure Ollama is running at {ollama_url}")
+        return False
+    
+    # Pull model (but don't fail if we can't)
+    pull_model(model=model, host=ollama_url)
+    
+    print("\n" + "=" * 50)
+    print("✅ Ready! Starting CLI...")
+    print("=" * 50 + "\n")
+    return True
+
+
+# ============================================================================
+# Streaming Helper with ESC Interrupt
+# ============================================================================
+
+class StreamInterruptor:
+    """Helper to detect ESC key during streaming."""
+    
+    def __init__(self):
+        self.interrupted = False
+        self.old_stdin_settings = None
+    
+    def start_monitoring(self):
+        """Set terminal to raw mode for ESC detection."""
+        try:
+            self.old_stdin_settings = termios.tcgetattr(sys.stdin.fileno())
+            tty.setraw(sys.stdin.fileno())
+        except (termios.error, AttributeError):
+            # Non-interactive terminal or not available
+            pass
+    
+    def stop_monitoring(self):
+        """Restore terminal to normal mode."""
+        if self.old_stdin_settings:
+            try:
+                termios.tcsetattr(sys.stdin.fileno(), termios.TCSADRAIN, self.old_stdin_settings)
+            except (termios.error, AttributeError):
+                pass
+    
+    def check_for_esc(self) -> bool:
+        """Check if ESC key was pressed. Returns True if interrupted."""
+        try:
+            # Check if there's input available without blocking
+            ready, _, _ = select.select([sys.stdin], [], [], 0)
+            
+            if ready:
+                char = sys.stdin.read(1)
+                # ESC key is ASCII 27
+                if ord(char) == 27:
+                    self.interrupted = True
+                    return True
+        except (OSError, termios.error):
+            pass
+        
+        return False
 
 
 class DeepXCLI:
@@ -41,6 +227,8 @@ class DeepXCLI:
         self.model = model
         self.client: Optional[OllamaClient] = None
         self.context_files = []
+        self.qa_conversation = []  # Store Q&A history
+        self.qa_turn_count = 0  # Track number of exchanges
         self._init_client()
 
     def _init_client(self) -> None:
@@ -181,17 +369,26 @@ class DeepXCLI:
                         )
                 
                 # Handle file suggestions with @
-                elif text.startswith("@"):
-                    partial = text[1:]  # Don't lowercase for file paths
-                    files = self.cli._get_files(partial)
+                # Support @ anywhere in the line, not just at the start
+                elif "@" in text:
+                    # Find the last @ symbol
+                    last_at_idx = text.rfind("@")
+                    partial = text[last_at_idx + 1:]  # Text after @
                     
-                    if files:  # Only yield if we have files
-                        for filepath in files:
-                            yield Completion(
-                                "@" + filepath,
-                                start_position=-(len(partial)+1),
-                                display_meta="Add to context"
-                            )
+                    # Only show suggestions if there's a space or start of line before @
+                    before_at = text[:last_at_idx]
+                    is_valid_at = not before_at or before_at[-1] in (" ", "\t", "\n")
+                    
+                    if is_valid_at:
+                        files = self.cli._get_files(partial)
+                        
+                        if files:  # Only yield if we have files
+                            for filepath in files:
+                                yield Completion(
+                                    filepath,
+                                    start_position=-len(partial),
+                                    display_meta="Add to context"
+                                )
         
         return PromptSession(
             completer=CommandCompleter(self),
@@ -222,6 +419,121 @@ class DeepXCLI:
         """Format code for display."""
         return f"\033[90m```{language}\n\033[0m{code}\033[90m\n```\033[0m"
 
+    def handle_qa_conversation(self, initial_prompt: str) -> None:
+        """Handle automated multi-turn Q&A conversation.
+        
+        DeepSeek automatically gets requested files without user intervention.
+        Limited to 3 exchanges to prevent infinite loops.
+        
+        Args:
+            initial_prompt: Initial user question
+        """
+        import re
+        MAX_TURNS = 3
+        self.qa_turn_count = 0
+        self.qa_conversation = []
+        
+        current_prompt = initial_prompt
+        files_accessed = set()
+        
+        while self.qa_turn_count < MAX_TURNS:
+            self.qa_turn_count += 1
+            
+            # Build conversation context
+            conversation_history = "\n".join([
+                f"[{item['type'].upper()}] {item['content'][:150]}..." 
+                if len(item['content']) > 150 else f"[{item['type'].upper()}] {item['content']}"
+                for item in self.qa_conversation
+            ])
+            
+            # System instruction for file requests
+            system_msg = """You are a code analysis assistant. When you need more context to answer better, 
+ask for it like: "I need to see @filename.py" or "Can you show me @other_file.py?". Be direct."""
+            
+            if conversation_history:
+                enhanced_prompt = f"{system_msg}\n\nContext:\n{conversation_history}\n\n{current_prompt}"
+            else:
+                enhanced_prompt = f"{system_msg}\n\n{current_prompt}"
+            
+            self._print_header(f"Exchange {self.qa_turn_count}/{MAX_TURNS}")
+            self._print_info("(Press ESC to interrupt)")
+            
+            # Get response from DeepSeek
+            try:
+                interruptor = StreamInterruptor()
+                interruptor.start_monitoring()
+                response = ""
+                
+                try:
+                    for token in self.client.generate(enhanced_prompt, stream=True):
+                        if interruptor.check_for_esc():
+                            print("\n⚠️  Response interrupted by user (ESC)")
+                            interruptor.interrupted = True
+                            break
+                        response += token
+                        print(token, end="", flush=True)
+                    print("\n")  # Newline after streaming
+                finally:
+                    interruptor.stop_monitoring()
+                
+                if not response or interruptor.interrupted:
+                    self._print_info("Conversation ended by user")
+                    break
+                
+                self.qa_conversation.append({
+                    "type": "assistant",
+                    "content": response
+                })
+                
+            except OllamaError as e:
+                self._print_error(f"Generation failed: {str(e)}")
+                break
+            
+            # Detect file requests
+            file_requests = re.findall(r'@([\w\-_.]+)', response)
+            new_files = [f for f in set(file_requests) if f not in files_accessed]
+            
+            if new_files and self.qa_turn_count < MAX_TURNS:
+                # Automatically load requested files
+                files_loaded = []
+                for filename in new_files:
+                    try:
+                        content = FileTools.read_file(filename)
+                        self.qa_conversation.append({
+                            "type": "context",
+                            "content": f"@{filename}:\n{content}"
+                        })
+                        files_accessed.add(filename)
+                        files_loaded.append(filename)
+                        self._print_success(f"✓ Loaded @{filename}")
+                    except ToolsError as e:
+                        self._print_error(f"✗ Could not read @{filename}")
+                
+                if files_loaded:
+                    print()
+                    current_prompt = "Continue analyzing with the files I provided above."
+                    continue
+            
+            # If still exchanges left and no file request, ask for follow-up
+            if self.qa_turn_count < MAX_TURNS:
+                print()
+                follow_up = input("Your question (or press Enter to exit): ").strip()
+                
+                if not follow_up:
+                    break
+                
+                self.qa_conversation.append({
+                    "type": "user",
+                    "content": follow_up
+                })
+                current_prompt = follow_up
+            else:
+                break
+        
+        self._print_info(f"Q&A session ended ({self.qa_turn_count}/{MAX_TURNS} exchanges)")
+        self.qa_conversation = []
+        self.qa_turn_count = 0
+
     def handle_generate(self, prompt: str, stream: bool = True) -> str:
         """Generate code from prompt.
         
@@ -242,14 +554,25 @@ class DeepXCLI:
 
         self._print_header("Generating")
         self._print_info(f"Temperature: 0.7 | Top-p: 0.9")
+        self._print_info("(Press ESC to interrupt)")
 
         try:
             if stream:
+                interruptor = StreamInterruptor()
+                interruptor.start_monitoring()
                 result = ""
-                for token in self.client.generate(prompt, stream=True):
-                    result += token
-                    print(token, end="", flush=True)
-                print()  # Newline after streaming
+                
+                try:
+                    for token in self.client.generate(prompt, stream=True):
+                        if interruptor.check_for_esc():
+                            print("\n\n⚠️  Response interrupted by user (ESC)")
+                            break
+                        result += token
+                        print(token, end="", flush=True)
+                    print()  # Newline after streaming
+                finally:
+                    interruptor.stop_monitoring()
+                
                 return result
             else:
                 result = self.client.generate(prompt, stream=False)
@@ -464,7 +787,15 @@ class DeepXCLI:
 
                         elif command == "models":
                             self.handle_models()
-
+                        
+                        elif command == "qa":
+                            if args:
+                                self.handle_qa_conversation(args)
+                            else:
+                                prompt = input("Ask your question: ").strip()
+                                if prompt:
+                                    self.handle_qa_conversation(prompt)
+                            
                         elif command == "debug-files":
                             # Debug command to show discovered files
                             workspace_paths = [
@@ -580,9 +911,20 @@ Examples:
         help="Disable streaming mode"
     )
 
+    parser.add_argument(
+        "--skip-init",
+        action="store_true",
+        help="Skip Ollama initialization (for advanced users)"
+    )
+
     args = parser.parse_args()
 
     try:
+        # Initialize system if not skipped
+        if not args.skip_init:
+            if not initialize_system(args.url, args.model):
+                sys.exit(1)
+        
         cli = DeepXCLI(ollama_url=args.url, model=args.model)
 
         if args.prompt:
