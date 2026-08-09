@@ -576,6 +576,22 @@ class CodeSmithCLI:
 
         return "\n\n".join(rendered_parts)
 
+    def _print_response(self, response: str) -> None:
+        """Write a response with terminal-safe line endings.
+
+        A bare ``\n`` after a soft-wrapped long line can leave the terminal
+        cursor in the wrapped column. Explicit CRLF endings reset the column
+        so the next prompt is always drawn from the left edge.
+        """
+        rendered = self._render_response(response)
+        if not rendered:
+            return
+
+        rendered = rendered.replace("\r\n", "\n").replace("\r", "\n")
+        rendered = rendered.replace("\n", "\r\n").rstrip("\r\n")
+        sys.stdout.write("\r" + rendered + "\r\n")
+        sys.stdout.flush()
+
     @staticmethod
     def _extract_file_mentions(text: str) -> Tuple[List[str], str]:
         """Extract @file and @"file with spaces" mentions from text."""
@@ -664,16 +680,14 @@ class CodeSmithCLI:
                             print("\n\n⚠️  Response interrupted by user (Ctrl-C)")
                             break
                         result += token
-                    rendered = self._render_response(result)
-                    if rendered:
-                        print(rendered)
+                    self._print_response(result)
                 finally:
                     interruptor.stop_monitoring()
                 
                 return result
             else:
                 result = self.client.generate(prompt, stream=False)
-                print(self._render_response(result))
+                self._print_response(result)
                 return result
 
         except KeyboardInterrupt:
