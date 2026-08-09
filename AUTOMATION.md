@@ -1,6 +1,6 @@
-# DeepX Automation Guide
+# CodeSmith Automation Guide
 
-Automate code generation and file creation with DeepX!
+Automate code generation and file creation with CodeSmith!
 
 ## Quick Start
 
@@ -8,7 +8,7 @@ Automate code generation and file creation with DeepX!
 
 ```bash
 # Generate and save a single file
-deepx-batch quicksort.py "Write a Python quicksort implementation"
+codesmith-batch quicksort.py "Write a Python quicksort implementation"
 
 # Files are saved to current directory
 ls -la quicksort.py
@@ -18,10 +18,10 @@ ls -la quicksort.py
 
 ```bash
 # Generate multiple files from config
-deepx-batch batch_example.json
+codesmith-batch batch_example.json
 
 # Or create your own batch.json
-deepx-batch my_batch.json
+codesmith-batch my_batch.json
 ```
 
 ## Setup
@@ -29,11 +29,11 @@ deepx-batch my_batch.json
 First, ensure you have the automation scripts available:
 
 ```bash
-# Add to PATH (same as deepx)
+# Add to PATH (same as codesmith)
 export PATH="/Users/aditya/Projects/DeepX:$PATH"
 
 # Then from anywhere:
-deepx-batch quicksort.py "Your prompt here"
+codesmith-batch quicksort.py "Your prompt here"
 ```
 
 ## Usage
@@ -41,23 +41,23 @@ deepx-batch quicksort.py "Your prompt here"
 ### Single File Generation
 
 ```bash
-deepx-batch <output_file> "<prompt>"
+codesmith-batch <output_file> "<prompt>"
 ```
 
 **Examples:**
 
 ```bash
 # Python sorting algorithm
-deepx-batch quicksort.py "Write quicksort with examples"
+codesmith-batch quicksort.py "Write quicksort with examples"
 
 # REST API
-deepx-batch api.py "Create Flask REST API with documentation"
+codesmith-batch api.py "Create Flask REST API with documentation"
 
 # Test suite
-deepx-batch tests.py "Write pytest tests for calculator module"
+codesmith-batch tests.py "Write pytest tests for calculator module"
 
 # Web scraper
-deepx-batch scraper.py "Build web scraper for hacker news"
+codesmith-batch scraper.py "Build web scraper for hacker news"
 ```
 
 ### Batch File Generation
@@ -86,14 +86,14 @@ Create a `batch.json` file:
 Then run:
 
 ```bash
-deepx-batch batch.json
+codesmith-batch batch.json
 ```
 
 ## Interactive vs Automated
 
 ### Interactive (Manual)
 ```
-deepx
+codesmith
 > Write a function
 /write output.py
 (paste code, Ctrl+D)
@@ -101,7 +101,7 @@ deepx
 
 ### Automated (Fast)
 ```bash
-deepx-batch output.py "Write a function"
+codesmith-batch output.py "Write a function"
 # Done! File saved.
 ```
 
@@ -131,26 +131,26 @@ cat > batch.json << 'EOF'
 EOF
 
 # Generate all at once
-deepx-batch batch.json
+codesmith-batch batch.json
 ```
 
 ### Example 2: Generate Project Structure
 
 ```bash
 # Create multiple project files
-deepx-batch models.py "Create SQLAlchemy models for blog (User, Post, Comment)"
-deepx-batch routes.py "Create Flask routes for CRUD operations"
-deepx-batch tests.py "Write tests for the routes and models"
-deepx-batch requirements.txt "Generate requirements.txt for Flask blog"
+codesmith-batch models.py "Create SQLAlchemy models for blog (User, Post, Comment)"
+codesmith-batch routes.py "Create Flask routes for CRUD operations"
+codesmith-batch tests.py "Write tests for the routes and models"
+codesmith-batch requirements.txt "Generate requirements.txt for Flask blog"
 ```
 
 ### Example 3: Data Processing Pipeline
 
 ```bash
-deepx-batch data_loader.py "Create functions to load CSV and JSON files"
-deepx-batch data_cleaner.py "Create data cleaning functions for missing values and outliers"
-deepx-batch data_analyzer.py "Create statistical analysis functions"
-deepx-batch pipeline.py "Integrate all components into a complete pipeline"
+codesmith-batch data_loader.py "Create functions to load CSV and JSON files"
+codesmith-batch data_cleaner.py "Create data cleaning functions for missing values and outliers"
+codesmith-batch data_analyzer.py "Create statistical analysis functions"
+codesmith-batch pipeline.py "Integrate all components into a complete pipeline"
 ```
 
 ## Advanced Features
@@ -158,7 +158,7 @@ deepx-batch pipeline.py "Integrate all components into a complete pipeline"
 ### Custom Model
 
 ```bash
-deepx-batch myfile.py "Your prompt" --model mistral:latest
+codesmith-batch myfile.py "Your prompt" --model mistral:latest
 ```
 
 Convert to batch config:
@@ -196,7 +196,7 @@ cat > project.json << 'EOF'
 EOF
 
 # 2. Generate all files at once
-deepx-batch project.json
+codesmith-batch project.json
 
 # 3. Review generated code
 ls -la *.py
@@ -259,35 +259,35 @@ docker-compose exec ollama ollama pull deepseek-coder:1.3b
 
 ### Generate Multiple Variations
 ```bash
-deepx-batch approach1.py "Implement quicksort using recursion"
-deepx-batch approach2.py "Implement quicksort using iteration"
-deepx-batch approach3.py "Implement quicksort using functional approach"
+codesmith-batch approach1.py "Implement quicksort using recursion"
+codesmith-batch approach2.py "Implement quicksort using iteration"
+codesmith-batch approach3.py "Implement quicksort using functional approach"
 ```
 
 ### Create Documentation
 ```bash
-deepx-batch README.md "Write comprehensive documentation for a Python project"
-deepx-batch API.md "Generate API documentation"
-deepx-batch TUTORIAL.md "Write a beginner's tutorial"
+codesmith-batch README.md "Write comprehensive documentation for a Python project"
+codesmith-batch API.md "Generate API documentation"
+codesmith-batch TUTORIAL.md "Write a beginner's tutorial"
 ```
 
 ### Generate Configuration Files
 ```bash
-deepx-batch docker-compose.yml "Create docker-compose for Python app"
-deepx-batch Dockerfile "Generate production-ready Dockerfile"
-deepx-batch .env.example "Create environment variables template"
+codesmith-batch docker-compose.yml "Create docker-compose for Python app"
+codesmith-batch Dockerfile "Generate production-ready Dockerfile"
+codesmith-batch .env.example "Create environment variables template"
 ```
 
 ## Next Steps
 
 1. **Try Single Generation**
    ```bash
-   deepx-batch test.py "Write hello world"
+   codesmith-batch test.py "Write hello world"
    ```
 
 2. **Create Your First Batch**
    - Create a batch.json
-   - Run deepx-batch batch.json
+   - Run codesmith-batch batch.json
 
 3. **Integrate Into Workflow**
    - Use in CI/CD pipelines
@@ -298,16 +298,16 @@ deepx-batch .env.example "Create environment variables template"
 
 ```bash
 # Single file
-deepx-batch FILE "PROMPT"
+codesmith-batch FILE "PROMPT"
 
 # Batch from JSON
-deepx-batch CONFIG.json
+codesmith-batch CONFIG.json
 
 # With custom model
-deepx-batch FILE "PROMPT" --model MODEL
+codesmith-batch FILE "PROMPT" --model MODEL
 
 # Help
-deepx-batch --help
+codesmith-batch --help
 ```
 
 Happy automating! 🚀

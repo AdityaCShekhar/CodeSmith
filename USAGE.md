@@ -1,4 +1,4 @@
-# DeepX - Setup & Usage
+# CodeSmith - Setup & Usage
 
 ## Quick Start
 
@@ -8,16 +8,16 @@ echo 'export PATH="/Users/aditya/Projects/DeepX:$PATH"' >> ~/.zshrc
 source ~/.zshrc
 
 # 2. Run from anywhere
-deepx
+codesmith
 ```
 
 ## Run Options
 
 ```bash
-deepx                              # Interactive mode
-deepx -p "your prompt"            # Single prompt
-deepx --url http://localhost:11434 # Custom Ollama URL
-deepx --skip-init                 # Skip initialization
+codesmith                              # Interactive mode
+codesmith -p "your prompt"            # Single prompt
+codesmith --url http://localhost:11434 # Custom Ollama URL
+codesmith --skip-init                 # Skip initialization
 ```
 
 ## Chat Commands

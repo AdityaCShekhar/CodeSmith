@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-DeepX Batch Generation Script
+CodeSmith Batch Generation Script
 Automate bulk code generation and file saving
 """
 
@@ -13,7 +13,7 @@ try:
     from llm import OllamaClient
     from tools import FileTools
 except ImportError:
-    print("Error: Please run from DeepX project directory")
+    print("Error: Please run from CodeSmith project directory")
     sys.exit(1)
 
 def generate_single(output_file: str, prompt: str, model: str = "deepseek-coder:1.3b") -> bool:
@@ -78,15 +78,15 @@ def generate_from_json(json_file: str) -> None:
 
 def main():
     parser = argparse.ArgumentParser(
-        description="DeepX Batch Code Generation",
+        description="CodeSmith Batch Code Generation",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
   # Single file
-  deepx-batch quicksort.py "Write a quicksort function"
+  codesmith-batch quicksort.py "Write a quicksort function"
   
   # From JSON config
-  deepx-batch batch.json
+  codesmith-batch batch.json
   
 JSON Format:
   {
@@ -129,7 +129,7 @@ JSON Format:
     else:
         if not args.prompt:
             print("Error: Prompt required when not using JSON")
-            print("Usage: deepx-batch <output_file> \"<prompt>\"")
+            print("Usage: codesmith-batch <output_file> \"<prompt>\"")
             sys.exit(1)
         
         if generate_single(args.input, args.prompt, args.model):

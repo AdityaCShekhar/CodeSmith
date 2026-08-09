@@ -44,8 +44,9 @@ COLOR_GRAY = "\033[90m"
 # Initialization Functions (migrated from init.py)
 # ============================================================================
 
-def wait_for_ollama(host: str = "http://ollama:11434", timeout: int = 120) -> bool:
+def wait_for_ollama(host: str = None, timeout: int = 120) -> bool:
     """Wait for Ollama to be ready (with extended timeout)."""
+    host = host or os.getenv("OLLAMA_URL", "http://localhost:11434")
     print(f"⏳ Waiting for Ollama at {host}...")
     start = time.time()
     attempt = 0
@@ -73,8 +74,9 @@ def wait_for_ollama(host: str = "http://ollama:11434", timeout: int = 120) -> bo
     return False
 
 
-def pull_model(model: str = "deepseek-coder:1.3b", host: str = "http://ollama:11434") -> bool:
+def pull_model(model: str = "deepseek-coder:1.3b", host: str = None) -> bool:
     """Pull model if not already available."""
+    host = host or os.getenv("OLLAMA_URL", "http://localhost:11434")
     try:
         print(f"\n📦 Checking for model: {model}")
         
@@ -138,8 +140,8 @@ def pull_model(model: str = "deepseek-coder:1.3b", host: str = "http://ollama:11
         return True
 
 
-def initialize_system(ollama_url: str = "http://ollama:11434", model: str = "deepseek-coder:1.3b") -> bool:
-    """Initialize and prepare the system for DeepX.
+def initialize_system(ollama_url: str = None, model: str = "deepseek-coder:1.3b") -> bool:
+    """Initialize and prepare the system for CodeSmith.
     
     Args:
         ollama_url: URL of Ollama server
@@ -149,7 +151,8 @@ def initialize_system(ollama_url: str = "http://ollama:11434", model: str = "dee
         True if initialization successful, False otherwise
     """
     print("\n" + "=" * 50)
-    print("🚀 DeepX Initialization")
+    ollama_url = ollama_url or os.getenv("OLLAMA_URL", "http://localhost:11434")
+    print("🚀 CodeSmith Initialization")
     print("=" * 50)
     
     # Wait for Ollama (extended timeout)
@@ -214,16 +217,16 @@ class StreamInterruptor:
 
 
 class DeepXCLI:
-    """CLI application for code generation with Ollama."""
+    """CodeSmith CLI application for code generation with Ollama."""
 
-    def __init__(self, ollama_url: str = "http://ollama:11434", model: str = "deepseek-coder:1.3b"):
+    def __init__(self, ollama_url: str = None, model: str = "deepseek-coder:1.3b"):
         """Initialize the CLI.
         
         Args:
             ollama_url: Ollama server URL
             model: Model to use for generation
         """
-        self.ollama_url = ollama_url
+        self.ollama_url = ollama_url or os.getenv("OLLAMA_URL", "http://localhost:11434")
         self.model = model
         self.client: Optional[OllamaClient] = None
         self.context_files = []
@@ -337,7 +340,7 @@ class DeepXCLI:
 
     def _setup_prompt_session(self):
         """Setup prompt session with custom completer."""
-        history_file = Path.home() / ".deepx_history"
+        history_file = Path.home() / ".codesmith_history"
         
         # Style that matches terminal theme
         style = Style.from_dict({
@@ -347,7 +350,7 @@ class DeepXCLI:
         })
         
         class CommandCompleter(Completer):
-            """Custom completer for DeepX commands."""
+            """Custom completer for CodeSmith commands."""
             def __init__(self, cli_instance):
                 self.cli = cli_instance
             
@@ -418,6 +421,66 @@ class DeepXCLI:
     def _format_code_block(self, code: str, language: str = "python") -> str:
         """Format code for display."""
         return f"\033[90m```{language}\n\033[0m{code}\033[90m\n```\033[0m"
+    
+    def _parse_file_requests(self, response: str) -> tuple[list[str], bool]:
+        """Parse intelligent file requests from AI response.
+        
+        Handles:
+        - @filename (standard)
+        - @filename.py (with extension)
+        - @file1, @file2 (comma-separated)
+        - @file1 and @file2 (and-separated)
+        - @ with no filename (unclear - returns empty list with flag)
+        
+        Returns:
+            tuple: (list of valid filenames, has_unclear_request)
+        """
+        import re
+        
+        # Find all @mentions with various contexts
+        # Pattern: @ followed by optional letters/numbers/underscore/hyphen/dots
+        # OR @ not followed by valid filename chars (unclear)
+        
+        valid_files = []
+        unclear = False
+        
+        # Check for bare @ mentions (unclear requests)
+        bare_mentions = re.findall(r'@\s*(?![a-zA-Z0-9_\-.])', response)
+        if bare_mentions:
+            unclear = True
+            self._print_info("⚠️  Found unclear file request (@ with no filename) - need clarification")
+        
+        # Parse actual filenames: @filename.ext or @filename
+        # Support patterns like @ followed by filename, with optional : or comma or 'and'
+        patterns = [
+            r'@([a-zA-Z0-9_\-]+\.py)',      # @filename.py
+            r'@([a-zA-Z0-9_\-]+\.txt)',     # @filename.txt
+            r'@([a-zA-Z0-9_\-]+\.md)',      # @filename.md
+            r'@([a-zA-Z0-9_\-]+\.json)',    # @filename.json
+            r'@([a-zA-Z0-9_\-\.]+)',        # @filename or @filename.ext
+        ]
+        
+        all_files = []
+        for pattern in patterns:
+            matches = re.findall(pattern, response)
+            all_files.extend(matches)
+        
+        # Deduplicate and filter - check if files exist
+        seen = set()
+        for filename in all_files:
+            if filename not in seen:
+                seen.add(filename)
+                # Basic file existence check - look for file in workspace
+                try:
+                    # Try to stat the file to see if it exists
+                    from pathlib import Path
+                    if Path(filename).exists() or Path(f"./{filename}").exists():
+                        valid_files.append(filename)
+                except:
+                    # If file doesn't exist, include it anyway - let FileTools.read_file handle error
+                    valid_files.append(filename)
+        
+        return list(dict.fromkeys(valid_files)), unclear  # Remove duplicates while preserving order
 
     def handle_qa_conversation(self, initial_prompt: str) -> None:
         """Handle automated multi-turn Q&A conversation.
@@ -489,9 +552,13 @@ ask for it like: "I need to see @filename.py" or "Can you show me @other_file.py
                 self._print_error(f"Generation failed: {str(e)}")
                 break
             
-            # Detect file requests
-            file_requests = re.findall(r'@([\w\-_.]+)', response)
-            new_files = [f for f in set(file_requests) if f not in files_accessed]
+            # Detect file requests with intelligent parsing
+            file_requests, unclear_request = self._parse_file_requests(response)
+            new_files = [f for f in file_requests if f not in files_accessed]
+            
+            if unclear_request and not new_files:
+                # AI asked for files but wasn't clear
+                self._print_info("Skipping unclear file request - AI response had @ with no filename")
             
             if new_files and self.qa_turn_count < MAX_TURNS:
                 # Automatically load requested files
@@ -699,7 +766,7 @@ ask for it like: "I need to see @filename.py" or "Can you show me @other_file.py
     def print_help(self) -> None:
         """Print help message."""
         help_text = f"""
-\033[1mDeepX - Code Generation CLI\033[0m
+\033[1mCodeSmith - Code Generation CLI\033[0m
 
 \033[1mCommands:\033[0m
   /write <filename>     Write input to file
@@ -727,7 +794,7 @@ ask for it like: "I need to see @filename.py" or "Can you show me @other_file.py
 
     def repl(self) -> None:
         """Run interactive REPL loop."""
-        self._print_header("DeepX - Code Generation CLI")
+        self._print_header("CodeSmith - Code Generation CLI")
         self._print_info("Type / then press Tab to see commands")
         self._print_info("Type @ then press Tab to see files for context")
         self._print_info("Type /help for available commands")
@@ -878,7 +945,7 @@ ask for it like: "I need to see @filename.py" or "Can you show me @other_file.py
 def main():
     """Main entry point."""
     parser = argparse.ArgumentParser(
-        description="DeepX - Code generation CLI using Ollama",
+        description="CodeSmith - Code generation CLI using Ollama",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
@@ -890,8 +957,8 @@ Examples:
 
     parser.add_argument(
         "-u", "--url",
-        default="http://ollama:11434",
-        help="Ollama server URL (default: http://ollama:11434)"
+        default=os.getenv("OLLAMA_URL", "http://localhost:11434"),
+        help="Ollama server URL (default: http://localhost:11434)"
     )
 
     parser.add_argument(

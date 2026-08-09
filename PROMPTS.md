@@ -141,6 +141,54 @@ Keep existing API unchanged.
 - Add specifics: "Include error handling, logging, type hints"
 - Example: "Should work like: input X → output Y"
 
+## How File Requests Work in Q&A Mode
+
+When using `/qa` (multi-turn Q&A), DeepSeek can ask for additional files to provide better answers.
+
+### Valid File Requests
+
+✅ **Standard format:**
+```
+"I need to see @llm.py to understand the integration"
+"Can you show me @tools.py?"
+```
+
+✅ **With extension:**
+```
+"Looking at @config.json, I can see..."
+"I need @README.md for context"
+```
+
+✅ **Multiple files:**
+```
+"I need @file1.py and @file2.py to compare"
+"Show me @cli.py, @tools.py, and @llm.py"
+```
+
+### How the System Handles Requests
+
+| Case | Example | Behavior |
+|------|---------|----------|
+| Valid filename | `"Need @cli.py"` | ✓ Automatically loads the file |
+| Multiple files | `"@file1.py and @file2.py"` | ✓ Loads all requested files |
+| Unclear request | `"Can you show me @?"` | ⚠️ Skipped - filename not clear |
+| Non-existent file | `"@missing.py"` | ⚠️ Error shown - file not found |
+| No filename | `"Need @ to help"` | ⚠️ Unclear request - add filename |
+
+### Why This Matters
+
+DeepSeek can ask for context **automatically**, so you don't need to manually provide every file upfront. This makes conversations more natural:
+
+```
+User:      > /qa explain @cli.py
+DeepSeek:  [Analyzes cli.py]
+           "I'd understand better with @tools.py"
+System:    ✓ Automatically loads @tools.py
+DeepSeek:  [Continues with both files in context]
+```
+
+---
+
 ## Quick Checklist
 
 Before asking, check:

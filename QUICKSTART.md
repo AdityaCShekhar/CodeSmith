@@ -1,10 +1,10 @@
 #!/bin/bash
-# Quick Start Guide for DeepX
+# Quick Start Guide for CodeSmith
 
 cat << 'EOF'
 
 ╔════════════════════════════════════════════════════════════════════╗
-║                    DeepX - Code Generation CLI                    ║
+║                    CodeSmith - Code Generation CLI                    ║
 ║                    Quick Start Guide                               ║
 ╚════════════════════════════════════════════════════════════════════╝
 
@@ -22,7 +22,7 @@ cat << 'EOF'
 1️⃣  PROJECT OVERVIEW
 ═══════════════════════════════════════════════════════════════════════
 
-DeepX is a powerful CLI tool similar to OpenAI Codex that runs locally
+CodeSmith is a powerful CLI tool similar to OpenAI Codex that runs locally
 using Ollama. It allows you to:
 
   ✨ Generate code from natural language prompts
@@ -71,7 +71,7 @@ Setup Steps:
    $ docker-compose up -d ollama
 
 3. Start the CLI (auto-pulls model on first run):
-   $ deepx
+   $ codesmith
    
    ⏳ First time: waits for Ollama, pulls model (2-5 minutes)
    ✓ Next times: instant startup
@@ -84,15 +84,15 @@ Setup Steps:
 ═══════════════════════════════════════════════════════════════════════
 
 After setup, simply type:
-  $ deepx
+  $ codesmith
 
 The model is automatically pulled and checked on startup.
 
 Other options:
 
-Option A: Using deepx command (fast)
-  $ deepx
-  $ deepx -p "Write hello world"
+Option A: Using codesmith command (fast)
+  $ codesmith
+  $ codesmith -p "Write hello world"
 
 Option B: Using Docker Compose
   $ docker-compose run --rm deepx-cli
@@ -102,7 +102,7 @@ Option C: Local Python (requires Ollama running separately)
   $ python3 cli.py
 
 Option D: Custom Ollama URL
-  $ deepx --url http://localhost:11434 --model deepseek-coder:1.3b
+  $ codesmith --url http://localhost:11434 --model deepseek-coder:1.3b
 
 ═══════════════════════════════════════════════════════════════════════
 5️⃣  FIRST CODE GENERATION
@@ -110,7 +110,7 @@ Option D: Custom Ollama URL
 
 After starting the CLI, you'll see:
 
-  ━━ DeepX - Code Generation CLI ━━
+  ━━ CodeSmith - Code Generation CLI ━━
   ℹ Connected to Ollama at http://ollama:11434
   ℹ Using model: deepseek-coder:1.3b
   ℹ Type /help for available commands

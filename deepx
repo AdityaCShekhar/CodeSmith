@@ -1,35 +1,7 @@
 #!/bin/bash
-# DeepX CLI wrapper script
+# Backward-compatible alias for CodeSmith.
 # Place this in /usr/local/bin or add project to PATH
 # Now supports running from any directory without init.py dependency
 
 PROJECT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-USER_PWD="$(pwd)"
-
-# Check if running with Docker Compose (default)
-if command -v docker-compose &> /dev/null && [ -f "$PROJECT_DIR/docker-compose.yml" ]; then
-    # Check if services are running
-    if docker-compose -f "$PROJECT_DIR/docker-compose.yml" ps ollama 2>/dev/null | grep -q "Up"; then
-        # Services are running, mount the user's current directory and use it
-        export WORK_DIR="$USER_PWD"
-        cd "$PROJECT_DIR"
-        # Pass through all arguments including --skip-init option
-        exec docker-compose run --rm -e WORK_DIR="$WORK_DIR" -v "$USER_PWD:/work" deepx-cli python3 cli.py "$@"
-    fi
-fi
-
-# Fall back to local Python (works from any directory now with init integrated)
-if [ -f "$PROJECT_DIR/cli.py" ]; then
-    # Set PYTHONPATH to ensure imports work correctly
-    export PYTHONPATH="$PROJECT_DIR:$PYTHONPATH"
-    
-    # Change to project directory to run cli.py (preserves dependencies)
-    cd "$PROJECT_DIR"
-    
-    # Run cli.py with all arguments passed through
-    exec python3 cli.py "$@"
-else
-    echo "Error: DeepX CLI not found at $PROJECT_DIR"
-    echo "Make sure the deepx script is in the same directory as cli.py"
-    exit 1
-fi
+exec "$PROJECT_DIR/codesmith" "$@"

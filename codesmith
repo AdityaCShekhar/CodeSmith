@@ -1,0 +1,26 @@
+#!/bin/bash
+# CodeSmith CLI launcher.
+# Run `codesmith` from any directory to open a session for that directory.
+
+PROJECT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+WORK_DIR="$(pwd)"
+
+if command -v docker-compose &> /dev/null && [ -f "$PROJECT_DIR/docker-compose.yml" ]; then
+    if docker-compose -f "$PROJECT_DIR/docker-compose.yml" ps ollama 2>/dev/null | grep -q "Up"; then
+        cd "$PROJECT_DIR"
+        exec docker-compose run --rm \
+            -e WORK_DIR="$WORK_DIR" \
+            -v "$WORK_DIR:/work" \
+            deepx-cli python3 cli.py "$@"
+    fi
+fi
+
+if [ -f "$PROJECT_DIR/cli.py" ]; then
+    export PYTHONPATH="$PROJECT_DIR${PYTHONPATH:+:$PYTHONPATH}"
+    export OLLAMA_URL="${OLLAMA_URL:-http://localhost:11434}"
+    cd "$WORK_DIR"
+    exec python3 "$PROJECT_DIR/cli.py" "$@"
+fi
+
+echo "Error: CodeSmith CLI not found at $PROJECT_DIR"
+exit 1

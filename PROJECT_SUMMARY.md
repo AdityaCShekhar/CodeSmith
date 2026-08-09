@@ -1,15 +1,15 @@
-# PROJECT SUMMARY - DeepX: Code Generation CLI
+# PROJECT SUMMARY - CodeSmith: Code Generation CLI
 
 ## ✅ COMPLETE DELIVERABLE
 
-All requirements have been successfully implemented. DeepX is a **production-ready CLI tool** that provides OpenAI Codex-like functionality using a local Ollama instance.
+All requirements have been successfully implemented. CodeSmith is a **production-ready CLI tool** that provides OpenAI Codex-like functionality using a local Ollama instance.
 
 ---
 
 ## 📦 PROJECT STRUCTURE
 
 ```
-DeepX/
+CodeSmith/
 ├── Core Application
 │   ├── cli.py              (Main REPL + command handling)
 │   ├── llm.py              (Ollama API integration)
@@ -213,7 +213,7 @@ python3 cli.py -p "Write a Python function to calculate factorial"
 
 ### Complete Docker Stack
 - **Ollama service** - AI model server
-- **DeepX CLI service** - Application container
+- **CodeSmith CLI service** - Application container
 - **Volume management** - Data persistence
 - **Health checks** - Automatic service verification
 - **Network isolation** - Self-contained environment
@@ -438,7 +438,7 @@ All files are self-documented:
 
 All requirements met, all bonuses included, production-ready code with comprehensive documentation.
 
-The DeepX CLI is ready to provide you with local, powerful code generation capabilities!
+The CodeSmith CLI is ready to provide you with local, powerful code generation capabilities!
 
 ---
 

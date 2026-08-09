@@ -1,5 +1,5 @@
 #!/bin/bash
-# Makefile-like commands for DeepX (source this or run commands directly)
+# Makefile-like commands for CodeSmith (source this or run commands directly)
 
 # Colors for output
 RED='\033[0;31m'
@@ -11,7 +11,7 @@ NC='\033[0m' # No Color
 # Show help
 show_help() {
     cat << EOF
-${BLUE}DeepX - Available Commands${NC}
+${BLUE}CodeSmith - Available Commands${NC}
 
 Usage: source commands.sh then run commands, or use directly:
   bash commands.sh [command]
@@ -68,7 +68,7 @@ EOF
 
 # Setup everything
 cmd_setup() {
-    echo -e "${BLUE}🚀 Starting DeepX Setup...${NC}"
+    echo -e "${BLUE}🚀 Starting CodeSmith Setup...${NC}"
     
     # Check Docker
     if ! command -v docker &> /dev/null; then
@@ -126,7 +126,7 @@ cmd_init() {
 
 # Run CLI
 cmd_run() {
-    echo -e "${BLUE}Starting DeepX CLI...${NC}"
+    echo -e "${BLUE}Starting CodeSmith CLI...${NC}"
     docker-compose run --rm deepx-cli
 }
 
@@ -139,7 +139,7 @@ cmd_run_single() {
 
 # Run without streaming
 cmd_run_no_stream() {
-    echo -e "${BLUE}Starting DeepX CLI (no streaming)...${NC}"
+    echo -e "${BLUE}Starting CodeSmith CLI (no streaming)...${NC}"
     docker-compose run --rm deepx-cli --no-stream
 }
 
@@ -226,7 +226,7 @@ cmd_list_models() {
 # Inspect resources
 cmd_inspect() {
     echo -e "${BLUE}=== Docker Images ===${NC}"
-    docker images | grep deepx
+    docker images | grep codesmith
     echo -e "\n${BLUE}=== Running Containers ===${NC}"
     docker-compose ps
     echo -e "\n${BLUE}=== Container Details ===${NC}"
@@ -235,7 +235,7 @@ cmd_inspect() {
 
 # Show status
 cmd_status() {
-    echo -e "${BLUE}=== DeepX Status ===${NC}"
+    echo -e "${BLUE}=== CodeSmith Status ===${NC}"
     echo -e "\n${BLUE}Containers:${NC}"
     docker-compose ps
     

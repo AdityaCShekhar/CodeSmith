@@ -1,9 +1,9 @@
-# DeepX Documentation - Simplified
+# CodeSmith Documentation - Simplified
 
 ## 3 Main Guides
 
 ### 1. **USAGE.md** - Setup & Basic Commands
-   - How to install and run DeepX
+   - How to install and run CodeSmith
    - Available commands
    - Basic usage examples
 
@@ -27,7 +27,7 @@ echo 'export PATH="/Users/aditya/Projects/DeepX:$PATH"' >> ~/.zshrc
 source ~/.zshrc
 
 # Run
-deepx
+codesmith
 ```
 
 ## Quick Reference

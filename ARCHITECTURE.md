@@ -1,9 +1,9 @@
-# DeepX - Architecture & Implementation Guide
+# CodeSmith - Architecture & Implementation Guide
 
 ## Project Structure
 
 ```
-DeepX/
+CodeSmith/
 ├── cli.py                  # Main CLI application (entry point)
 ├── llm.py                  # Ollama API client
 ├── tools.py                # File and shell utilities

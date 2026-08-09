@@ -1,9 +1,9 @@
 #!/bin/bash
-# Quick start script for DeepX
+# Quick start script for CodeSmith
 
 set -e
 
-echo "📦 DeepX - Automated Setup"
+echo "📦 CodeSmith - Automated Setup"
 echo "===================================="
 echo ""
 
@@ -24,7 +24,7 @@ fi
 echo "✓ Docker Compose is installed"
 echo ""
 
-echo "🚀 Starting DeepX Environment..."
+echo "🚀 Starting CodeSmith Environment..."
 echo ""
 
 # Build Docker image
@@ -60,7 +60,7 @@ echo ""
 echo "✅ Setup complete!"
 echo ""
 echo "🎯 Next Steps:"
-echo "   - Start the CLI:       deepx"
+echo "   - Start the CLI:       codesmith"
 echo "   - Or with docker:      docker-compose run --rm deepx-cli"
 echo "   - Check status:        docker-compose ps"
 echo "   - View logs:           docker-compose logs ollama"

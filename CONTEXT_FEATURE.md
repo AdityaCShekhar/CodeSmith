@@ -1,8 +1,8 @@
-# DeepX @ Context Feature Guide
+# CodeSmith @ Context Feature Guide
 
 ## Overview
 
-The `@` symbol in DeepX allows you to easily add file context to your code generation prompts. When you mention a file with `@filename`, its contents are automatically included in the prompt sent to the AI model.
+The `@` symbol in CodeSmith allows you to easily add file context to your code generation prompts. When you mention a file with `@filename`, its contents are automatically included in the prompt sent to the AI model.
 
 ## Quick Start
 
@@ -140,7 +140,7 @@ Include multiple files by using `@` multiple times:
 
 ### File Discovery
 
-DeepX automatically discovers files from:
+CodeSmith automatically discovers files from:
 - Current directory (`.`)
 - Docker container mount (`/work`)
 - Workspace directory (`/workspace`)
@@ -160,7 +160,7 @@ DeepX automatically discovers files from:
 
 2. **Context Injection Phase**
    - User sends prompt with `@filename` mentions
-   - DeepX extracts file paths
+   - CodeSmith extracts file paths
    - File contents are prepended to prompt
    - Sent to LLM with full context
 

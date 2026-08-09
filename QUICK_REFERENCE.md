@@ -3,9 +3,9 @@
 ## Launch
 
 ```bash
-deepx                       # Start interactive
-deepx -p "prompt"          # Run single prompt
-deepx --skip-init          # Skip initialization
+codesmith                       # Start interactive
+codesmith -p "prompt"          # Run single prompt
+codesmith --skip-init          # Skip initialization
 ```
 
 ## Commands
@@ -45,7 +45,7 @@ Press Tab for autocomplete
 ```bash
 echo 'export PATH="/Users/aditya/Projects/DeepX:$PATH"' >> ~/.zshrc
 source ~/.zshrc
-deepx
+codesmith
 ```
 
 ---

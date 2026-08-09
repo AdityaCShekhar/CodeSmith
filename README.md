@@ -1,4 +1,4 @@
-# DeepX - Code Generation CLI
+# CodeSmith - Code Generation CLI
 
 A powerful CLI tool for code generation using a local Ollama instance. Think of it as your personal OpenAI Codex alternative running on your machine. Built with Python, this tool provides an interactive REPL for generating code, reading/writing files, and executing shell commands.
 
@@ -37,7 +37,7 @@ cli.py          # Main entry point with REPL loop
 
 ## Quick Command Setup
 
-To use `deepx` command from anywhere:
+To use `codesmith` command from anywhere:
 
 ```bash
 # Option 1: Add to PATH (recommended)
@@ -47,13 +47,13 @@ export PATH="/Users/aditya/Projects/DeepX:$PATH"
 echo 'export PATH="/Users/aditya/Projects/DeepX:$PATH"' >> ~/.zshrc
 
 # Or symlink to /usr/local/bin
-sudo ln -sf /Users/aditya/Projects/DeepX/deepx /usr/local/bin/deepx
+sudo ln -sf /Users/aditya/Projects/DeepX/codesmith /usr/local/bin/codesmith
 ```
 
 Then simply type:
 ```bash
-deepx                    # Interactive mode
-deepx -p "Your prompt"   # Single command
+codesmith                    # Interactive mode
+codesmith -p "Your prompt"   # Single command
 ```
 
 ## Installation & Setup
@@ -105,7 +105,7 @@ docker-compose down
 ### Interactive REPL Mode
 
 ```bash
-deepx
+codesmith
 ```
 
 Or:
@@ -116,7 +116,7 @@ python3 cli.py
 ### Single Prompt Mode
 
 ```bash
-deepx -p "Write a Python function to calculate fibonacci"
+codesmith -p "Write a Python function to calculate fibonacci"
 ```
 
 Or:
@@ -127,7 +127,7 @@ python3 cli.py -p "Write a Python function to calculate fibonacci"
 ### Custom Ollama URL and Model
 
 ```bash
-deepx --url http://localhost:11434 --model deepseek-coder:1.3b
+codesmith --url http://localhost:11434 --model deepseek-coder:1.3b
 ```
 
 Or:
@@ -289,10 +289,10 @@ Generate and save code automatically without interactive mode!
 
 ```bash
 # Single file generation
-deepx-batch quicksort.py "Write a quicksort implementation"
+codesmith-batch quicksort.py "Write a quicksort implementation"
 
 # Batch generation from JSON config
-deepx-batch batch.json
+codesmith-batch batch.json
 
 # Generates and saves files automatically!
 ```
@@ -322,7 +322,7 @@ Create a `batch.json` file:
 
 Then run:
 ```bash
-deepx-batch batch.json
+codesmith-batch batch.json
 ```
 
 All files are generated and saved automatically!
@@ -331,13 +331,13 @@ All files are generated and saved automatically!
 
 ```bash
 # Single file
-deepx-batch <output_file> "<prompt>"
+codesmith-batch <output_file> "<prompt>"
 
 # Batch from JSON
-deepx-batch <config.json>
+codesmith-batch <config.json>
 
 # With custom model
-deepx-batch <output_file> "<prompt>" --model mistral:latest
+codesmith-batch <output_file> "<prompt>" --model mistral:latest
 ```
 
 **See [AUTOMATION.md](AUTOMATION.md) for complete automation guide**
@@ -353,7 +353,7 @@ docker-compose up -d ollama
 # Start the CLI (automatically pulls model on first run)
 docker-compose run --rm deepx-cli
 
-# Or use the deepx command shortcut
+# Or use the codesmith command shortcut
 deepc
 
 # View Ollama logs
@@ -526,7 +526,7 @@ ports:
 
 ### CLI Module (`cli.py`)
 
-- **DeepXCLI**: Main application class
+- **CodeSmithCLI**: Main application class
 - **REPL Loop**: Interactive command processing
 - **Command Handling**: Dispatch to appropriate handlers
 - **Output Formatting**: Color-coded, organized output
@@ -556,4 +556,4 @@ For issues, questions, or suggestions, please create an issue in the repository.
 
 ---
 
-**Happy coding with DeepX!** 🚀
+**Happy coding with CodeSmith!** 🚀
