@@ -9,6 +9,7 @@ import os
 import signal
 import select
 import re
+import textwrap
 from typing import Optional, List, Tuple
 from pathlib import Path
 
@@ -32,6 +33,16 @@ from prompt_toolkit.formatted_text import FormattedText
 from prompt_toolkit.styles import Style
 from prompt_toolkit.key_binding import KeyBindings
 from prompt_toolkit.keys import Keys
+
+try:
+    from pygments import highlight
+    from pygments.formatters import TerminalFormatter
+    from pygments.lexers import TextLexer, get_lexer_by_name
+except ImportError:
+    highlight = None
+    TerminalFormatter = None
+    TextLexer = None
+    get_lexer_by_name = None
 
 try:
     from colorama import just_fix_windows_console
@@ -510,6 +521,61 @@ class CodeSmithCLI:
         """Format code for display."""
         return f"\033[90m```{language}\n\033[0m{code}\033[90m\n```\033[0m"
 
+    def _render_response(self, response: str) -> str:
+        """Render Markdown code fences for a terminal-friendly response.
+
+        Ollama returns Markdown frequently, but printing streamed tokens
+        directly makes fences and indentation look broken. CodeSmith keeps
+        the original response for callers and only formats the displayed
+        version here.
+        """
+        if not response or "```" not in response:
+            return response
+
+        fence_pattern = re.compile(
+            r"```([^\n`]*)\n?(.*?)```", flags=re.DOTALL
+        )
+        rendered_parts = []
+        cursor = 0
+
+        for match in fence_pattern.finditer(response):
+            before = response[cursor:match.start()].strip()
+            if before:
+                rendered_parts.append(before)
+
+            language = match.group(1).strip().split()[0] if match.group(1).strip() else "text"
+            code = textwrap.dedent(match.group(2)).strip("\n")
+            rendered_code = code
+
+            if (
+                highlight is not None
+                and TerminalFormatter is not None
+                and get_lexer_by_name is not None
+                and sys.stdout.isatty()
+            ):
+                try:
+                    lexer = get_lexer_by_name(language)
+                except Exception:
+                    lexer = TextLexer()
+                rendered_code = highlight(
+                    code,
+                    lexer,
+                    TerminalFormatter(),
+                ).rstrip("\n")
+
+            rendered_parts.append(
+                f"{COLOR_GRAY}```{language}{COLOR_RESET}\n"
+                f"{rendered_code}\n"
+                f"{COLOR_GRAY}```{COLOR_RESET}"
+            )
+            cursor = match.end()
+
+        trailing = response[cursor:].strip()
+        if trailing:
+            rendered_parts.append(trailing)
+
+        return "\n\n".join(rendered_parts)
+
     @staticmethod
     def _extract_file_mentions(text: str) -> Tuple[List[str], str]:
         """Extract @file and @"file with spaces" mentions from text."""
@@ -598,16 +664,16 @@ class CodeSmithCLI:
                             print("\n\n⚠️  Response interrupted by user (Ctrl-C)")
                             break
                         result += token
-                        print(token, end="", flush=True)
-                    sys.stdout.write("\r\n")
-                    sys.stdout.flush()
+                    rendered = self._render_response(result)
+                    if rendered:
+                        print(rendered)
                 finally:
                     interruptor.stop_monitoring()
                 
                 return result
             else:
                 result = self.client.generate(prompt, stream=False)
-                print(result)
+                print(self._render_response(result))
                 return result
 
         except KeyboardInterrupt:
