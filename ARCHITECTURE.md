@@ -32,9 +32,7 @@ CodeSmith/
 **Key Methods**:
 - `handle_generate()`: Generate code from prompts
 - `handle_write()`: Write user input to files
-- `handle_read()`: Display file contents
-- `handle_run()`: Execute shell commands
-- `handle_context()`: Manage context files
+- ` context injection`: Manage context files
 - `repl()`: Main interactive loop
 
 **Features**:
@@ -114,11 +112,9 @@ CLI Command Parser
     │   └→ FileTools.write_file()
     │       └→ Display success message
     │
-    ├→ /read command
     │   └→ FileTools.read_file()
     │       └→ Display file content
     │
-    └→ /run command
         └→ ShellTools.run_command()
             └→ Display output
 ```
@@ -126,7 +122,7 @@ CLI Command Parser
 ### Context Injection Flow
 
 ```
-User adds context: /context add file.py
+User adds context: @file.py
     ↓
 FileTools.read_file() - Verify file exists
     ↓
@@ -246,7 +242,6 @@ When generating:
    - No symbolic link traversal bypass
    - Directory creation safe (mkdir -p equivalent)
 
-2. **Shell Execution**:
    - Direct shell=True (not sandboxed)
    - Timeout prevents infinite loops
    - Output fully captured before display
@@ -295,7 +290,7 @@ cli = CodexCLI(model="your-model:tag")
 
 ### Docker Deployment
 - Use `docker-compose` for all services
-- Mount volumes for persistent data
+- Mount volumes for temporary data
 - Network isolation via compose networks
 
 ### Local Deployment
@@ -359,7 +354,6 @@ python3 cli.py --url http://localhost:11434
 
 **Generate and Save**
 ```
-/read existing_code.py
 > Optimize the performance of this code
 /write optimized_code.py
 ```
@@ -368,12 +362,11 @@ python3 cli.py --url http://localhost:11434
 ```
 > Generate a pytest for calculating primes
 /write test_primes.py
-/run pytest test_primes.py -v
 ```
 
 **Iterative Development**
 ```
-/context add main.py
+@main.py
 > Explain the main.py code
 > Generate docstrings for all functions
 /write main_documented.py

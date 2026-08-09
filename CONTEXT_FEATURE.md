@@ -49,7 +49,7 @@ Search for files by typing part of the name:
 ```
 > Fix the bug in @too
 <Shows only files containing "too">
-@tools.py    Add to context
+@tools.py    Include for this prompt
 ```
 
 ### 📁 Multiple File Context
@@ -63,34 +63,15 @@ Include multiple files by using `@` multiple times:
 ✓ Added llm.py to context for this prompt
 ```
 
-### 📌 Persistent vs Temporary Context
+### 📌 Temporary Context
 
-**Temporary (for current prompt only):**
+File mentions apply to the current prompt only:
 ```
 > Write a test for @cli.py
 (File context is used for this prompt only)
 ```
 
-**Persistent (for multiple prompts):**
-```
-> /context add cli.py
-✓ Added cli.py to context
-
-> Now add error handling to the generate function
-(cli.py is still in context)
-
-> Also write a test for the error handling
-(cli.py remains in context)
-```
-
-### 🎮 Commands for Context Management
-
-```
-/context                  # Show current context files
-/context add file.py      # Manually add a file
-/context remove 1         # Remove file by index
-/context clear            # Clear all context files
-```
+To use the same file in another prompt, mention it again.
 
 ## Usage Examples
 
@@ -198,17 +179,12 @@ Reference multiple files to understand patterns:
 
 ### 🔄 Iterative Development
 
-Use persistent context for back-and-forth development:
+Use temporary file context for focused prompts:
 
 ```
-> /context add cli.py
-> Add a new command handler
+> Looking at @cli.py, add a new command handler and include error handling.
 
-> Now add error handling to it
-> (cli.py is still in context)
-
-> Write tests for this handler
-> (cli.py is still in context)
+> Write tests for the handler in @cli.py.
 ```
 
 ### 💾 Save Generated Code
@@ -285,9 +261,8 @@ Test with:
 
 - File contents are read at prompt time
 - Save your changes to disk first
-- If file is in persistent context, it's read fresh each time
+- If file is in temporary  context, it's read fresh each time
 
 ---
 
 **Now you can leverage file context to get better, more accurate code generation!** 🚀
-

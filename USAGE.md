@@ -22,12 +22,7 @@ codesmith --skip-init                 # Skip initialization
 
 ## Chat Commands
 
-- `/read file.py` - View file
-- `/write file.py` - Save code
-- `/run command` - Execute shell command
-- `/context add file` - Add to persistent context
-- `/context remove N` - Remove by index
-- `/context` - Show current context
+- `/write file.py` - Generate code from instructions and save it
 - `/models` - List available models
 - `/help` - Show help
 - `/exit` - Quit
@@ -40,7 +35,6 @@ Add files to your prompt with `@`:
 > Write a test for @cli.py
 ✓ Added cli.py to context
 
-> /context add tools.py
 > Refactor based on patterns in @cli.py and @tools.py
 ```
 
@@ -61,7 +55,7 @@ See **PROMPTS.md** for complete guide on writing clear prompts.
 ✅ No `init.py` dependency  
 ✅ Tab autocomplete for files  
 ✅ Multiple file context support  
-✅ Persistent context manager  
+✅ Temporary file context with `@filename`
 ✅ Auto-initialization  
 ✅ Docker Compose compatible  
 

@@ -27,7 +27,6 @@ using Ollama. It allows you to:
 
   ✨ Generate code from natural language prompts
   📝 Read and write files directly from the CLI
-  🔧 Execute shell commands
   🧠 Inject file context for smarter generation
   📊 Stream responses for real-time feedback
 
@@ -158,31 +157,27 @@ USE CASE 1: Generate and Save Code
 
 USE CASE 2: Code with Context
 ─────────────────────────────────────
-  /context add utils.py
-  /context add config.json
+  @utils.py
+  @config.json
   > Generate tests for the functions in utils.py following the patterns
   # AI generates informed by the context files
 
 USE CASE 3: Read and Understand Code
 ─────────────────────────────────────
-  /read existing_code.py
   > Explain what this code does and suggest improvements
 
 USE CASE 4: Execute and Test
 ─────────────────────────────────────
   /write test_script.py
   # [paste your generated code]
-  /run python3 test_script.py
 
 USE CASE 5: Iterative Development
 ──────────────────────────────────
   > Generate a web scraper for hackernews.com
   /write scraper.py
-  /run python3 scraper.py
   ✗ Error: requests module not found
   > Generate the same scraper but using built-in libraries
   /write scraper_builtin.py
-  /run python3 scraper_builtin.py
 
 ═══════════════════════════════════════════════════════════════════════
 AVAILABLE COMMANDS
@@ -192,18 +187,10 @@ Generation:
   > Your prompt here     Generate code from a prompt
 
 File Operations:
-  /read <file>         Display file contents
-  /write <file>        Create/edit file (Ctrl+D to save)
-
-Shell Integration:
-  /run <command>       Execute shell commands
-  /run python3 test.py  Run Python script
+  /write <file>        Generate code from instructions and save it
 
 Context Management:
-  /context             Show current context files
-  /context add <file>  Add file to context for smarter generation
-  /context remove <n>  Remove context file by number
-  /context clear       Clear all context files
+  @<file>  Add file to context for smarter generation
 
 Utilities:
   /models              List available models
@@ -235,13 +222,10 @@ Solution:
 Problem: File not found when reading
 Solution:
   • Use absolute or relative paths from working directory
-  • Check path exists: /run ls -la <path>
-  • Create directory if needed: /run mkdir -p <dir>
 
 Problem: "Exit code: 127" when running command
 Solution:
   • Command not found in container
-  • Try absolute path: /run /usr/bin/python3 script.py
   • Install dependencies within the container
 
 ═══════════════════════════════════════════════════════════════════════
@@ -301,7 +285,6 @@ PERFORMANCE TIPS
 3. Increase Docker memory for faster generation
 4. Run Ollama on GPU if available (modify docker-compose.yml)
 5. Batch similar requests to warm up the model
-6. Clear old context with /context clear regularly
 
 ═══════════════════════════════════════════════════════════════════════
 NEXT STEPS
@@ -310,7 +293,6 @@ NEXT STEPS
 1. Run the CLI: docker-compose run --rm deepx-cli
 2. Type /help to see all commands
 3. Generate your first code: "Write a hello world program"
-4. Experiment with /read, /write, /run commands
 5. Read README.md for complete documentation
 6. Check ARCHITECTURE.md for technical details
 7. Try the demo script: python3 demo.py

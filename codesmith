@@ -9,9 +9,11 @@ if command -v docker-compose &> /dev/null && [ -f "$PROJECT_DIR/docker-compose.y
     if docker-compose -f "$PROJECT_DIR/docker-compose.yml" ps ollama 2>/dev/null | grep -q "Up"; then
         cd "$PROJECT_DIR"
         exec docker-compose run --rm \
+            --entrypoint python3 \
             -e WORK_DIR="$WORK_DIR" \
             -v "$WORK_DIR:/work" \
-            deepx-cli python3 cli.py "$@"
+            -v "$PROJECT_DIR:/codesmith:ro" \
+            deepx-cli /codesmith/cli.py "$@"
     fi
 fi
 

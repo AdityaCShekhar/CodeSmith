@@ -11,12 +11,7 @@ codesmith --skip-init          # Skip initialization
 ## Commands
 
 ```
-/read FILE              # Read file
-/write FILE             # Save code
-/run CMD                # Run command
-/context add FILE       # Add to context
-/context remove N       # Remove from context
-/context                # Show context
+/write FILE             # Generate code from instructions and save it
 /models                 # List models
 /help                   # Help
 /exit                   # Exit

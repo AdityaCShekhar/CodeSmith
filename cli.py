@@ -19,9 +19,11 @@ from prompt_toolkit.history import FileHistory
 from prompt_toolkit.document import Document
 from prompt_toolkit.formatted_text import FormattedText
 from prompt_toolkit.styles import Style
+from prompt_toolkit.key_binding import KeyBindings
+from prompt_toolkit.keys import Keys
 
 from llm import OllamaClient, OllamaError
-from tools import FileTools, ShellTools, ContextInjector, ToolsError
+from tools import FileTools, ContextInjector, ToolsError
 
 try:
     import requests
@@ -33,8 +35,8 @@ except ImportError:
 # ANSI color codes
 COLOR_RESET = "\033[0m"
 COLOR_BOLD = "\033[1m"
-COLOR_CYAN = "\033[36m"
-COLOR_GREEN = "\033[32m"
+COLOR_CYAN = "\033[92m"
+COLOR_GREEN = "\033[92m"
 COLOR_YELLOW = "\033[33m"
 COLOR_RED = "\033[31m"
 COLOR_GRAY = "\033[90m"
@@ -206,8 +208,8 @@ class StreamInterruptor:
             
             if ready:
                 char = sys.stdin.read(1)
-                # ESC key is ASCII 27
-                if ord(char) == 27:
+                # ESC is 27; Ctrl-C is 3 when the terminal is in raw mode.
+                if ord(char) in (27, 3):
                     self.interrupted = True
                     return True
         except (OSError, termios.error):
@@ -219,7 +221,12 @@ class StreamInterruptor:
 class DeepXCLI:
     """CodeSmith CLI application for code generation with Ollama."""
 
-    def __init__(self, ollama_url: str = None, model: str = "deepseek-coder:1.3b"):
+    def __init__(
+        self,
+        ollama_url: str = None,
+        model: str = "deepseek-coder:1.3b",
+        stream: bool = True,
+    ):
         """Initialize the CLI.
         
         Args:
@@ -228,6 +235,7 @@ class DeepXCLI:
         """
         self.ollama_url = ollama_url or os.getenv("OLLAMA_URL", "http://localhost:11434")
         self.model = model
+        self.stream = stream
         self.client: Optional[OllamaClient] = None
         self.context_files = []
         self.qa_conversation = []  # Store Q&A history
@@ -247,7 +255,8 @@ class DeepXCLI:
     def _get_command_suggestions(self, partial: str = "") -> List[str]:
         """Get command suggestions for autocomplete."""
         all_commands = [
-            "read", "write", "run", "context", "models", "help", "exit"
+            "write", "models", "qa",
+            "debug-files", "help", "exit"
         ]
         
         if not partial:
@@ -329,11 +338,10 @@ class DeepXCLI:
     def _get_command_descriptions(self) -> dict:
         """Get command descriptions for autocomplete display."""
         return {
-            "read": "View file contents",
-            "write": "Save code to file",
-            "run": "Execute shell command",
-            "context": "Manage file context",
+            "write": "Generate code and save to file",
             "models": "List available models",
+            "qa": "Start multi-turn Q&A",
+            "debug-files": "Show discovered files",
             "help": "Show full help",
             "exit": "Exit the application"
         }
@@ -341,12 +349,50 @@ class DeepXCLI:
     def _setup_prompt_session(self):
         """Setup prompt session with custom completer."""
         history_file = Path.home() / ".codesmith_history"
+        key_bindings = KeyBindings()
+
+        @key_bindings.add("/")
+        def _(event):
+            """Show command suggestions immediately after typing '/'. """
+            if event.current_buffer.text:
+                event.current_buffer.insert_text("/")
+                return
+            event.current_buffer.insert_text("/")
+            event.current_buffer.start_completion(select_first=False)
+
+        @key_bindings.add("@")
+        def _(event):
+            """Show file suggestions immediately after typing '@'."""
+            buffer = event.current_buffer
+            before_at = buffer.text
+            if before_at and not before_at[-1].isspace():
+                buffer.insert_text("@")
+                return
+            buffer.insert_text("@")
+            buffer.start_completion(select_first=False)
+
+        @key_bindings.add(Keys.Any)
+        def _(event):
+            """Keep slash-command completion active as the command is typed."""
+            buffer = event.current_buffer
+            buffer.insert_text(event.data)
+            if buffer.text.startswith("/"):
+                buffer.start_completion(select_first=False)
+            elif "@" in buffer.text:
+                last_at = buffer.text.rfind("@")
+                if last_at == 0 or buffer.text[last_at - 1].isspace():
+                    buffer.start_completion(select_first=False)
         
-        # Style that matches terminal theme
+        # Dark forest-green CodeSmith theme for completion menus.
         style = Style.from_dict({
-            'completion-menu': 'bg:#333333 #cccccc',
-            'completion-menu.completion': '#cccccc',
-            'completion-menu.completion.current': 'bg:#0066ff #ffffff bold',
+            'completion-menu': 'bg:#0d1f14 #b7f7c2',
+            'completion-menu.completion': 'bg:#0d1f14 #b7f7c2',
+            'completion-menu.completion.current': 'bg:#3fb950 #07140b bold',
+            'completion-menu.meta.completion': 'bg:#0d1f14 #ffffff',
+            'completion-menu.meta.completion.current': 'bg:#3fb950 #ffffff',
+            'scrollbar.background': 'bg:#0d1f14',
+            'scrollbar.button': 'bg:#3fb950',
+            'prompt': '#98e6a5 bold',
         })
         
         class CommandCompleter(Completer):
@@ -368,6 +414,7 @@ class DeepXCLI:
                         yield Completion(
                             cmd + " ",
                             start_position=-len(partial),
+                            display=f"/{cmd}",
                             display_meta=descriptions.get(cmd, "")
                         )
                 
@@ -390,25 +437,28 @@ class DeepXCLI:
                                 yield Completion(
                                     filepath,
                                     start_position=-len(partial),
-                                    display_meta="Add to context"
+                                    display=f"  {filepath}",
+                                    display_meta="Include in prompt"
                                 )
         
         return PromptSession(
             completer=CommandCompleter(self),
+            key_bindings=key_bindings,
             history=FileHistory(str(history_file)),
             enable_history_search=True,
             mouse_support=False,
             complete_while_typing=True,
+            complete_in_thread=False,
             style=style,
         )
 
     def _print_info(self, message: str) -> None:
         """Print info message."""
-        print(f"\033[36mℹ {message}\033[0m")
+        print(f"{COLOR_CYAN}ℹ {message}{COLOR_RESET}")
 
     def _print_success(self, message: str) -> None:
         """Print success message."""
-        print(f"\033[32m✓ {message}\033[0m")
+        print(f"{COLOR_GREEN}✓ {message}{COLOR_RESET}")
 
     def _print_error(self, message: str) -> None:
         """Print error message."""
@@ -416,7 +466,7 @@ class DeepXCLI:
 
     def _print_header(self, title: str) -> None:
         """Print formatted header."""
-        print(f"\n\033[1m\033[36m━━ {title} ━━\033[0m")
+        print(f"\n{COLOR_BOLD}{COLOR_CYAN}━━ {title} ━━{COLOR_RESET}")
 
     def _format_code_block(self, code: str, language: str = "python") -> str:
         """Format code for display."""
@@ -535,7 +585,8 @@ ask for it like: "I need to see @filename.py" or "Can you show me @other_file.py
                             break
                         response += token
                         print(token, end="", flush=True)
-                    print("\n")  # Newline after streaming
+                    sys.stdout.write("\r\n")
+                    sys.stdout.flush()
                 finally:
                     interruptor.stop_monitoring()
                 
@@ -548,6 +599,9 @@ ask for it like: "I need to see @filename.py" or "Can you show me @other_file.py
                     "content": response
                 })
                 
+            except KeyboardInterrupt:
+                print("\n\n⚠️  Response interrupted by user (Ctrl-C)")
+                break
             except OllamaError as e:
                 self._print_error(f"Generation failed: {str(e)}")
                 break
@@ -636,7 +690,8 @@ ask for it like: "I need to see @filename.py" or "Can you show me @other_file.py
                             break
                         result += token
                         print(token, end="", flush=True)
-                    print()  # Newline after streaming
+                    sys.stdout.write("\r\n")
+                    sys.stdout.flush()
                 finally:
                     interruptor.stop_monitoring()
                 
@@ -646,96 +701,76 @@ ask for it like: "I need to see @filename.py" or "Can you show me @other_file.py
                 print(result)
                 return result
 
+        except KeyboardInterrupt:
+            print("\n\n⚠️  Response interrupted by user (Ctrl-C)")
+            return result if stream else ""
         except OllamaError as e:
             self._print_error(f"Generation failed: {str(e)}")
             return ""
 
     def handle_write(self, filepath: str) -> None:
-        """Write content to file.
+        """Generate code from instructions and write it to a file.
         
         Args:
             filepath: Target file path
         """
-        print(f"\033[1mEnter content (Ctrl+D to save):\033[0m")
-        lines = []
         try:
-            while True:
-                lines.append(input())
-        except EOFError:
-            pass
+            instruction = input(f"\033[1mInstructions for {filepath}:\033[0m ").strip()
+        except (EOFError, KeyboardInterrupt):
+            self._print_info("Write cancelled")
+            return
 
-        content = "\n".join(lines)
+        if not instruction:
+            self._print_error("Instructions cannot be empty")
+            return
+
+        prompt = (
+            "You are a code-generation engine. Generate the complete contents "
+            f"of the file '{filepath}'.\n\n"
+            "STRICT OUTPUT RULES:\n"
+            "1. Output only the final file contents.\n"
+            "2. Do not write an explanation, introduction, summary, or notes.\n"
+            "3. Do not use Markdown code fences such as ```python.\n"
+            "4. Do not say what the code does before or after the code.\n"
+            "5. Use minimal comments; include them only when essential for clarity.\n"
+            "6. Never include commentary outside the code.\n"
+            "7. Make the result directly usable as the requested file.\n\n"
+            f"USER INSTRUCTIONS:\n{instruction}"
+        )
+        generated = self.handle_generate(prompt, stream=True).strip()
+
+        # Models sometimes ignore the "code only" instruction and wrap code
+        # in Markdown fences followed by an explanation. Save only the first
+        # fenced block when one is present.
+        import re
+        import textwrap
+        code_block = re.search(
+            r"```(?:[a-zA-Z0-9_+#.-]+)?\s*(.*?)```",
+            generated,
+            flags=re.DOTALL,
+        )
+        content = textwrap.dedent(
+            code_block.group(1) if code_block else generated
+        ).strip()
+
+        # Do not write common placeholder responses produced by weak models.
+        if content.lower() in {"code", "your code here", "..."}:
+            content = ""
+        elif not code_block and re.search(
+            r"(?i)\b(sure,? i can help|here(?:'s| is) the complete|i can help you)\b",
+            content,
+        ):
+            content = ""
+
+        if not content:
+            self._print_error("No content generated; file was not written")
+            return
 
         try:
             msg = FileTools.write_file(filepath, content)
             self._print_success(msg)
         except ToolsError as e:
             self._print_error(str(e))
-
-    def handle_read(self, filepath: str) -> None:
-        """Read and display file content.
-        
-        Args:
-            filepath: File path to read
-        """
-        try:
-            content = FileTools.read_file(filepath)
-            self._print_header(f"Reading {filepath}")
-            print(content)
-            print()
-        except ToolsError as e:
-            self._print_error(str(e))
-
-    def handle_run(self, command: str) -> None:
-        """Run shell command.
-        
-        Args:
-            command: Command to execute
-        """
-        self._print_header(f"Running: {command}")
-        try:
-            output = ShellTools.safe_command(command)
-            print(output)
-            print()
-        except ToolsError as e:
-            self._print_error(str(e))
-
-    def handle_context(self, args: list) -> None:
-        """Manage context files.
-        
-        Args:
-            args: Command arguments
-        """
-        if not args:
-            if self.context_files:
-                self._print_info("Current context files:")
-                for i, f in enumerate(self.context_files, 1):
-                    print(f"  {i}. {f}")
-            else:
-                self._print_info("No context files set")
-            return
-
-        action = args[0]
-        if action == "add":
-            filepath = " ".join(args[1:])
-            try:
-                FileTools.read_file(filepath)  # Verify file exists
-                self.context_files.append(filepath)
-                self._print_success(f"Added {filepath} to context")
-            except ToolsError as e:
-                self._print_error(str(e))
-
-        elif action == "remove":
-            try:
-                idx = int(args[1]) - 1
-                removed = self.context_files.pop(idx)
-                self._print_success(f"Removed {removed} from context")
-            except (ValueError, IndexError):
-                self._print_error("Invalid index")
-
-        elif action == "clear":
-            self.context_files = []
-            self._print_success("Context cleared")
 
     def handle_models(self) -> None:
         """List available models."""
@@ -753,13 +788,12 @@ ask for it like: "I need to see @filename.py" or "Can you show me @other_file.py
         """Show quick command suggestions."""
         suggestions = f"""
 \033[1mAvailable Commands:\033[0m
-  \033[36m/write\033[0m <filename>     Save code to file
-  \033[36m/read\033[0m <filename>      View file contents
-  \033[36m/run\033[0m <command>        Execute shell command
-  \033[36m/context\033[0m              Manage file context
-  \033[36m/models\033[0m               List available models
-  \033[36m/help\033[0m                 Show this help
-  \033[36m/exit\033[0m                 Exit
+  \033[92m/write\033[0m <filename>     Generate code and save to file
+  \033[92m/models\033[0m               List available models
+  \033[92m/qa\033[0m <question>       Start multi-turn Q&A
+  \033[92m/debug-files\033[0m         Show discovered files
+  \033[92m/help\033[0m                 Show this help
+  \033[92m/exit\033[0m                 Exit
 """
         print(suggestions)
 
@@ -769,13 +803,10 @@ ask for it like: "I need to see @filename.py" or "Can you show me @other_file.py
 \033[1mCodeSmith - Code Generation CLI\033[0m
 
 \033[1mCommands:\033[0m
-  /write <filename>     Write input to file
-  /read <filename>      Read and display file
-  /run <command>        Execute shell command
-  /context add <file>   Add file to context
-  /context remove <n>   Remove context file by number
-  /context              Show current context
+  /write <filename>     Generate code from instructions and save it
   /models              List available models
+  /qa <question>        Start multi-turn Q&A
+  /debug-files          Show discovered files
   /help                Show this help
   /exit                Exit the application
 
@@ -785,8 +816,7 @@ ask for it like: "I need to see @filename.py" or "Can you show me @other_file.py
   
 \033[1mExample:\033[0m
   > Write a Python function to calculate factorial
-  > /context add utils.py
-  > /read utils.py
+  > Explain @utils.py and suggest improvements
   > /write output.py
 
 """
@@ -796,7 +826,7 @@ ask for it like: "I need to see @filename.py" or "Can you show me @other_file.py
         """Run interactive REPL loop."""
         self._print_header("CodeSmith - Code Generation CLI")
         self._print_info("Type / then press Tab to see commands")
-        self._print_info("Type @ then press Tab to see files for context")
+        self._print_info("Type @ to see files for context")
         self._print_info("Type /help for available commands")
         print()
         
@@ -807,7 +837,9 @@ ask for it like: "I need to see @filename.py" or "Can you show me @other_file.py
             while True:
                 try:
                     # Get input with live suggestions
-                    user_input = session.prompt(FormattedText([("bold", "> ")])).strip()
+                    user_input = session.prompt(
+                        FormattedText([("class:prompt", "➜ ")])
+                    ).strip()
 
                     if not user_input:
                         continue
@@ -830,27 +862,11 @@ ask for it like: "I need to see @filename.py" or "Can you show me @other_file.py
                         elif command == "help":
                             self.print_help()
 
-                        elif command == "read":
-                            if args:
-                                self.handle_read(args)
-                            else:
-                                self._print_error("Usage: /read <filename>")
-
                         elif command == "write":
                             if args:
                                 self.handle_write(args)
                             else:
                                 self._print_error("Usage: /write <filename>")
-
-                        elif command == "run":
-                            if args:
-                                self.handle_run(args)
-                            else:
-                                self._print_error("Usage: /run <command>")
-
-                        elif command == "context":
-                            context_args = args.split() if args else []
-                            self.handle_context(context_args)
 
                         elif command == "models":
                             self.handle_models()
@@ -915,15 +931,15 @@ ask for it like: "I need to see @filename.py" or "Can you show me @other_file.py
                         clean_prompt = " ".join([w for w in words if not w.startswith("@")])
                         
                         if clean_prompt.strip():
-                            self.handle_generate(clean_prompt, stream=True)
+                            self.handle_generate(clean_prompt, stream=self.stream)
                         
                         # Restore original context
                         self.context_files = original_context
 
                 except KeyboardInterrupt:
                     print()
-                    self._print_info("Interrupted by user")
-                    continue
+                    self._print_info("Goodbye!")
+                    break
                 except EOFError:
                     self._print_info("Goodbye!")
                     break
@@ -933,13 +949,16 @@ ask for it like: "I need to see @filename.py" or "Can you show me @other_file.py
         except KeyboardInterrupt:
             pass
 
-    def run_single(self, prompt: str) -> None:
+    def run_single(self, prompt: str, stream: Optional[bool] = None) -> None:
         """Run a single generation and exit.
         
         Args:
             prompt: Input prompt
         """
-        self.handle_generate(prompt, stream=True)
+        self.handle_generate(
+            prompt,
+            stream=self.stream if stream is None else stream,
+        )
 
 
 def main():
@@ -992,7 +1011,11 @@ Examples:
             if not initialize_system(args.url, args.model):
                 sys.exit(1)
         
-        cli = DeepXCLI(ollama_url=args.url, model=args.model)
+        cli = DeepXCLI(
+            ollama_url=args.url,
+            model=args.model,
+            stream=not args.no_stream,
+        )
 
         if args.prompt:
             cli.run_single(args.prompt)

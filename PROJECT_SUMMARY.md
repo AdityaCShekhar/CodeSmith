@@ -59,12 +59,10 @@ CodeSmith/
 
 ✅ **File Operations**
   - `/write <filename>` - Create/edit files
-  - `/read <filename>` - Display file contents
   - Automatic directory creation
   - Safe path handling
 
 ✅ **Shell Command Execution**
-  - `/run <command>` - Execute shell commands
   - Output capture (STDOUT/STDERR separation)
   - 30-second command timeout
   - Exit code reporting
@@ -84,10 +82,7 @@ CodeSmith/
   - Non-blocking streaming implementation
 
 ✅ **Context Injection**
-  - `/context add <file>` - Add files to context
-  - `/context` - View current context
-  - `/context remove <n>` - Remove files
-  - `/context clear` - Clear all context
+  - `@<file>` - Add files to context
   - Automatic file content injection into prompts
 
 ✅ **Additional Features**
@@ -154,24 +149,18 @@ python3 cli.py -p "Write a Python function to calculate factorial"
 
 ### 3. File Integration
 ```
-> /read existing_code.py
 > Optimize this code for performance
 > /write optimized_code.py
-> /run python3 optimized_code.py
 ```
 
 ### 4. Context-Aware Generation
 ```
-> /context add utils.py
-> /context add config.json
+> @utils.py
+> @config.json
 > Generate comprehensive tests for all utilities
 ```
 
-### 5. Shell Integration
 ```
-> /run ls -la
-> /run python3 test_suite.py
-> /run npm install && npm start
 ```
 
 ---
@@ -316,18 +305,13 @@ docker-compose down -v            # Stop + remove volumes
 - Streaming output for real-time feedback
 
 **File Commands**
-- `/read <file>` - Display and explore code
 - `/write <file>` - Save generated code
 
 **Shell Commands**
-- `/run <cmd>` - Execute commands
 - Works with Python, npm, docker, git, etc.
 
 **Context Management**
-- `/context` - Show current context
-- `/context add <file>` - Include in prompts
-- `/context remove <n>` - Remove by number
-- `/context clear` - Clear all
+- `@<file>` - Include in prompts
 
 **System Commands**
 - `/models` - List available models

@@ -1,12 +1,11 @@
 # CodeSmith - Code Generation CLI
 
-A powerful CLI tool for code generation using a local Ollama instance. Think of it as your personal OpenAI Codex alternative running on your machine. Built with Python, this tool provides an interactive REPL for generating code, reading/writing files, and executing shell commands.
+A powerful CLI tool for code generation using a local Ollama instance. Think of it as your personal OpenAI Codex alternative running on your machine. Built with Python, this tool provides an interactive REPL for generating code, reading, and writing files.
 
 ## Features
 
 - 🚀 **Code Generation**: Generate code from natural language prompts
 - 📝 **File Operations**: Read, write, and manage files seamlessly
-- 🔧 **Shell Integration**: Execute commands directly from the CLI
 - 🧠 **Context Injection**: Include file contents in prompts for context-aware generation
 - 📊 **Streaming Support**: Real-time token streaming from Ollama
 - 🎯 **Multiple Models**: Support for any Ollama-hosted model
@@ -145,52 +144,21 @@ Simply type your prompt without a `/` prefix:
 > Write a Python function to reverse a string
 ```
 
-### File Operations
+### File Generation
 
-**Read a file:**
-```
-/read <filename>
-```
-
-**Write to a file:**
+**Generate and write a file:**
 ```
 /write <filename>
 ```
-Then input the content and press Ctrl+D to save.
+Then enter instructions for the code you want generated and saved.
 
-### Shell Execution
+### File Context
 
-**Run a shell command:**
+Mention files directly in a prompt. Their contents are included for that
+prompt only:
 ```
-/run <command>
-```
-
-Example:
-```
-/run python generate_data.py
-/run ls -la
-```
-
-### Context Management
-
-**Add a file to context (included in prompts):**
-```
-/context add <filename>
-```
-
-**View current context files:**
-```
-/context
-```
-
-**Remove a context file:**
-```
-/context remove <number>
-```
-
-**Clear all context:**
-```
-/context clear
+> Explain @filename.py and suggest improvements
+> Write tests for @utils.py and @models.py
 ```
 
 ### Utilities
@@ -233,8 +201,7 @@ print(result)  # Output: 3
 ### Example 2: Generate Code with Context
 
 ```
-/context add style.py
-/read style.py
+@style.py
 
 > Generate a class that follows the patterns in the context file
 
@@ -259,7 +226,6 @@ print(result)  # Output: 3
 ### Example 4: Test the Generated Code
 
 ```
-/run python csv_parser.py --test
 
 ⭐ Running: python csv_parser.py --test
 STDOUT:
@@ -396,8 +362,8 @@ fn main() {
 Include files in your prompts for code generation aware of your codebase:
 
 ```
-/context add utils.py
-/context add config.json
+@utils.py
+@config.json
 > Generate tests for the functions in utils.py
 ```
 
