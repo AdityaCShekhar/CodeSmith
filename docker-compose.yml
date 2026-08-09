@@ -1,7 +1,9 @@
+name: codesmith
+
 services:
   ollama:
     image: ollama/ollama:latest
-    container_name: deepx-ollama
+    container_name: codesmith-ollama
     ports:
       - "11434:11434"
     environment:
@@ -9,7 +11,7 @@ services:
     volumes:
       - ollama_data:/root/.ollama
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:11434/api/tags", "||", "exit", "1"]
+      test: ["CMD", "ollama", "list"]
       interval: 5s
       timeout: 10s
       retries: 30
@@ -17,7 +19,7 @@ services:
     stdin_open: true
     tty: true
 
-  deepx-cli:
+  codesmith-cli:
     build: .
     depends_on:
       ollama:

@@ -1,10 +1,7 @@
-"""File and shell command tools for the CLI."""
+"""File and context tools for the CLI."""
 
-import os
-import subprocess
-import json
 from pathlib import Path
-from typing import Tuple, Optional
+from typing import Optional
 
 
 class ToolsError(Exception):
@@ -84,61 +81,6 @@ class FileTools:
             }
         except Exception as e:
             raise ToolsError(f"Cannot get file info: {str(e)}")
-
-
-class ShellTools:
-    """Handle shell command execution."""
-
-    @staticmethod
-    def run_command(command: str, timeout: int = 30) -> Tuple[str, str, int]:
-        """Run a shell command and return output.
-        
-        Args:
-            command: Shell command to run
-            timeout: Command timeout in seconds
-            
-        Returns:
-            Tuple of (stdout, stderr, return_code)
-            
-        Raises:
-            ToolsError: If command execution fails
-        """
-        try:
-            result = subprocess.run(
-                command,
-                shell=True,
-                capture_output=True,
-                text=True,
-                timeout=timeout,
-            )
-            return result.stdout, result.stderr, result.returncode
-        except subprocess.TimeoutExpired:
-            raise ToolsError(f"Command timed out after {timeout} seconds")
-        except Exception as e:
-            raise ToolsError(f"Cannot run command: {str(e)}")
-
-    @staticmethod
-    def safe_command(command: str, timeout: int = 30) -> str:
-        """Run a command safely and return formatted output.
-        
-        Args:
-            command: Shell command to run
-            timeout: Command timeout in seconds
-            
-        Returns:
-            Formatted command output
-        """
-        stdout, stderr, code = ShellTools.run_command(command, timeout)
-        
-        output = []
-        if stdout:
-            output.append(f"STDOUT:\n{stdout}")
-        if stderr:
-            output.append(f"STDERR:\n{stderr}")
-        if code != 0:
-            output.append(f"Exit code: {code}")
-        
-        return "\n".join(output) if output else "✓ Command executed successfully"
 
 
 class ContextInjector:

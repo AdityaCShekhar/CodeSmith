@@ -42,8 +42,8 @@ Write a Python function that validates emails:
 
 ### 3. Use @file Context
 ```
-✅ Looking at @llm.py, add retry logic to generate()
-✅ Based on patterns in @tools.py, write similar function
+✅ Looking at @src/codesmith/llm.py, add retry logic to generate()
+✅ Based on patterns in @src/codesmith/tools.py, write similar function
 ```
 
 ### 4. Specify Format
@@ -103,8 +103,8 @@ Keep existing API unchanged.
 
 ### Example 1: Explain Code
 
-❌ `> Explain demo.py`
-✅ `> What does demo.py do? 4 bullet points: what it imports, main function, how to run, expected output`
+❌ `> Explain examples/demo.py`
+✅ `> What does examples/demo.py do? 4 bullet points: what it imports, main function, how to run, expected output`
 
 ### Example 2: Generate Code
 
@@ -114,7 +114,7 @@ Keep existing API unchanged.
 ### Example 3: With File Context
 
 ❌ `> Improve the error handling`
-✅ `> Looking at @llm.py, add retry logic: retry 3x on timeout, exponential backoff (1s, 2s, 4s), log each retry`
+✅ `> Looking at @src/codesmith/llm.py, add retry logic: retry 3x on timeout, exponential backoff (1s, 2s, 4s), log each retry`
 
 ## Common Mistakes
 
@@ -141,16 +141,17 @@ Keep existing API unchanged.
 - Add specifics: "Include error handling, logging, type hints"
 - Example: "Should work like: input X → output Y"
 
-## How File Requests Work in Q&A Mode
+## How File Context Works
 
-When using `/qa` (multi-turn Q&A), DeepSeek can ask for additional files to provide better answers.
+Mention files with `@` in any regular prompt. CodeSmith reads those files for
+that prompt only, so mention them again when a later prompt also needs them.
 
-### Valid File Requests
+### Valid File Mentions
 
 ✅ **Standard format:**
 ```
-"I need to see @llm.py to understand the integration"
-"Can you show me @tools.py?"
+"I need to see @src/codesmith/llm.py to understand the integration"
+"Can you show me @src/codesmith/tools.py?"
 ```
 
 ✅ **With extension:**
@@ -162,29 +163,24 @@ When using `/qa` (multi-turn Q&A), DeepSeek can ask for additional files to prov
 ✅ **Multiple files:**
 ```
 "I need @file1.py and @file2.py to compare"
-"Show me @cli.py, @tools.py, and @llm.py"
+"Show me @src/codesmith/cli.py, @src/codesmith/tools.py, and @src/codesmith/llm.py"
 ```
 
-### How the System Handles Requests
+### How CodeSmith Handles Mentions
 
 | Case | Example | Behavior |
 |------|---------|----------|
-| Valid filename | `"Need @cli.py"` | ✓ Automatically loads the file |
-| Multiple files | `"@file1.py and @file2.py"` | ✓ Loads all requested files |
+| Valid filename | `"Explain @src/codesmith/cli.py"` | ✓ Includes the file in this prompt |
+| Multiple files | `"Compare @file1.py and @file2.py"` | ✓ Includes both in this prompt |
 | Unclear request | `"Can you show me @?"` | ⚠️ Skipped - filename not clear |
 | Non-existent file | `"@missing.py"` | ⚠️ Error shown - file not found |
 | No filename | `"Need @ to help"` | ⚠️ Unclear request - add filename |
 
-### Why This Matters
-
-DeepSeek can ask for context **automatically**, so you don't need to manually provide every file upfront. This makes conversations more natural:
+### Example
 
 ```
-User:      > /qa explain @cli.py
-DeepSeek:  [Analyzes cli.py]
-           "I'd understand better with @tools.py"
-System:    ✓ Automatically loads @tools.py
-DeepSeek:  [Continues with both files in context]
+> Explain how commands are parsed in @src/codesmith/cli.py
+> Compare file handling in @src/codesmith/cli.py and @src/codesmith/tools.py
 ```
 
 ---
@@ -200,4 +196,3 @@ Before asking, check:
 ---
 
 **TL;DR:** Specific, constrained prompts = readable, useful responses ✅
-

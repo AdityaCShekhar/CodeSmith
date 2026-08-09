@@ -7,11 +7,22 @@ import traceback
 import time
 import os
 import signal
-import termios
-import tty
 import select
-from typing import Optional, List
+import re
+from typing import Optional, List, Tuple
 from pathlib import Path
+
+try:
+    import termios
+    import tty
+except ImportError:  # Windows
+    termios = None
+    tty = None
+
+try:
+    import msvcrt
+except ImportError:  # macOS and Linux
+    msvcrt = None
 
 from prompt_toolkit import PromptSession
 from prompt_toolkit.completion import Completer, Completion
@@ -22,8 +33,13 @@ from prompt_toolkit.styles import Style
 from prompt_toolkit.key_binding import KeyBindings
 from prompt_toolkit.keys import Keys
 
-from llm import OllamaClient, OllamaError
-from tools import FileTools, ContextInjector, ToolsError
+try:
+    from colorama import just_fix_windows_console
+except ImportError:
+    just_fix_windows_console = None
+
+from .llm import OllamaClient, OllamaError
+from .tools import FileTools, ContextInjector, ToolsError
 
 try:
     import requests
@@ -31,6 +47,13 @@ except ImportError:
     # If requests isn't available, try to import urllib
     import urllib.request
     requests = None
+
+if just_fix_windows_console is not None:
+    just_fix_windows_console()
+
+for output_stream in (sys.stdout, sys.stderr):
+    if hasattr(output_stream, "reconfigure"):
+        output_stream.reconfigure(errors="replace")
 
 # ANSI color codes
 COLOR_RESET = "\033[0m"
@@ -43,7 +66,7 @@ COLOR_GRAY = "\033[90m"
 
 
 # ============================================================================
-# Initialization Functions (migrated from init.py)
+# Initialization helpers
 # ============================================================================
 
 def wait_for_ollama(host: str = None, timeout: int = 120) -> bool:
@@ -173,52 +196,66 @@ def initialize_system(ollama_url: str = None, model: str = "deepseek-coder:1.3b"
 
 
 # ============================================================================
-# Streaming Helper with ESC Interrupt
+# Cross-platform streaming interrupt helper
 # ============================================================================
 
 class StreamInterruptor:
-    """Helper to detect ESC key during streaming."""
+    """Detect Ctrl-C while streaming on Windows, macOS, and Linux."""
     
     def __init__(self):
         self.interrupted = False
         self.old_stdin_settings = None
     
     def start_monitoring(self):
-        """Set terminal to raw mode for ESC detection."""
+        """Enable non-blocking key reads where the platform supports them."""
+        if msvcrt is not None or termios is None or tty is None:
+            return
+        if not sys.stdin.isatty():
+            return
         try:
             self.old_stdin_settings = termios.tcgetattr(sys.stdin.fileno())
             tty.setraw(sys.stdin.fileno())
-        except (termios.error, AttributeError):
-            # Non-interactive terminal or not available
-            pass
+        except (OSError, AttributeError):
+            self.old_stdin_settings = None
     
     def stop_monitoring(self):
         """Restore terminal to normal mode."""
         if self.old_stdin_settings:
             try:
                 termios.tcsetattr(sys.stdin.fileno(), termios.TCSADRAIN, self.old_stdin_settings)
-            except (termios.error, AttributeError):
+            except (OSError, AttributeError):
                 pass
+            finally:
+                self.old_stdin_settings = None
     
-    def check_for_esc(self) -> bool:
-        """Check if ESC key was pressed. Returns True if interrupted."""
+    def check_for_interrupt(self) -> bool:
+        """Return True when Ctrl-C is pressed during streaming."""
         try:
-            # Check if there's input available without blocking
-            ready, _, _ = select.select([sys.stdin], [], [], 0)
-            
-            if ready:
-                char = sys.stdin.read(1)
-                # ESC is 27; Ctrl-C is 3 when the terminal is in raw mode.
-                if ord(char) in (27, 3):
+            if msvcrt is not None:
+                if not msvcrt.kbhit():
+                    return False
+                char = msvcrt.getwch()
+                if char == "\x03":
                     self.interrupted = True
                     return True
-        except (OSError, termios.error):
+                return False
+
+            if self.old_stdin_settings is None:
+                return False
+
+            ready, _, _ = select.select([sys.stdin], [], [], 0)
+            if ready:
+                char = sys.stdin.read(1)
+                if char == "\x03":
+                    self.interrupted = True
+                    return True
+        except (OSError, ValueError, AttributeError):
             pass
         
         return False
 
 
-class DeepXCLI:
+class CodeSmithCLI:
     """CodeSmith CLI application for code generation with Ollama."""
 
     def __init__(
@@ -238,8 +275,6 @@ class DeepXCLI:
         self.stream = stream
         self.client: Optional[OllamaClient] = None
         self.context_files = []
-        self.qa_conversation = []  # Store Q&A history
-        self.qa_turn_count = 0  # Track number of exchanges
         self._init_client()
 
     def _init_client(self) -> None:
@@ -423,18 +458,22 @@ class DeepXCLI:
                     # Find the last @ symbol
                     last_at_idx = text.rfind("@")
                     partial = text[last_at_idx + 1:]  # Text after @
+                    search_partial = partial.lstrip('"')
                     
                     # Only show suggestions if there's a space or start of line before @
                     before_at = text[:last_at_idx]
                     is_valid_at = not before_at or before_at[-1] in (" ", "\t", "\n")
                     
                     if is_valid_at:
-                        files = self.cli._get_files(partial)
+                        files = self.cli._get_files(search_partial)
                         
                         if files:  # Only yield if we have files
                             for filepath in files:
+                                insertion = (
+                                    f'"{filepath}"' if " " in filepath else filepath
+                                )
                                 yield Completion(
-                                    filepath,
+                                    insertion,
                                     start_position=-len(partial),
                                     display=f"  {filepath}",
                                     display_meta="Include in prompt"
@@ -470,8 +509,21 @@ class DeepXCLI:
     def _format_code_block(self, code: str, language: str = "python") -> str:
         """Format code for display."""
         return f"\033[90m```{language}\n\033[0m{code}\033[90m\n```\033[0m"
+
+    @staticmethod
+    def _extract_file_mentions(text: str) -> Tuple[List[str], str]:
+        """Extract @file and @"file with spaces" mentions from text."""
+        pattern = re.compile(r'@"([^"]+)"|@([^\s,;]+)')
+        files = []
+        for match in pattern.finditer(text):
+            filepath = (match.group(1) or match.group(2)).rstrip(".!?:)]}")
+            if filepath and filepath not in files:
+                files.append(filepath)
+        cleaned = pattern.sub("", text)
+        cleaned = re.sub(r"[ \t]+", " ", cleaned).strip()
+        return files, cleaned
     
-    def _parse_file_requests(self, response: str) -> tuple[list[str], bool]:
+    def _parse_file_requests(self, response: str) -> Tuple[List[str], bool]:
         """Parse intelligent file requests from AI response.
         
         Handles:
@@ -484,35 +536,16 @@ class DeepXCLI:
         Returns:
             tuple: (list of valid filenames, has_unclear_request)
         """
-        import re
-        
-        # Find all @mentions with various contexts
-        # Pattern: @ followed by optional letters/numbers/underscore/hyphen/dots
-        # OR @ not followed by valid filename chars (unclear)
-        
         valid_files = []
         unclear = False
         
         # Check for bare @ mentions (unclear requests)
-        bare_mentions = re.findall(r'@\s*(?![a-zA-Z0-9_\-.])', response)
+        bare_mentions = re.findall(r'@\s*(?!["a-zA-Z0-9_./\\-])', response)
         if bare_mentions:
             unclear = True
             self._print_info("⚠️  Found unclear file request (@ with no filename) - need clarification")
         
-        # Parse actual filenames: @filename.ext or @filename
-        # Support patterns like @ followed by filename, with optional : or comma or 'and'
-        patterns = [
-            r'@([a-zA-Z0-9_\-]+\.py)',      # @filename.py
-            r'@([a-zA-Z0-9_\-]+\.txt)',     # @filename.txt
-            r'@([a-zA-Z0-9_\-]+\.md)',      # @filename.md
-            r'@([a-zA-Z0-9_\-]+\.json)',    # @filename.json
-            r'@([a-zA-Z0-9_\-\.]+)',        # @filename or @filename.ext
-        ]
-        
-        all_files = []
-        for pattern in patterns:
-            matches = re.findall(pattern, response)
-            all_files.extend(matches)
+        all_files, _ = self._extract_file_mentions(response)
         
         # Deduplicate and filter - check if files exist
         seen = set()
@@ -530,129 +563,6 @@ class DeepXCLI:
                     valid_files.append(filename)
         
         return list(dict.fromkeys(valid_files)), unclear  # Remove duplicates while preserving order
-
-    def handle_qa_conversation(self, initial_prompt: str) -> None:
-        """Handle automated multi-turn Q&A conversation.
-        
-        DeepSeek automatically gets requested files without user intervention.
-        Limited to 3 exchanges to prevent infinite loops.
-        
-        Args:
-            initial_prompt: Initial user question
-        """
-        import re
-        MAX_TURNS = 3
-        self.qa_turn_count = 0
-        self.qa_conversation = []
-        
-        current_prompt = initial_prompt
-        files_accessed = set()
-        
-        while self.qa_turn_count < MAX_TURNS:
-            self.qa_turn_count += 1
-            
-            # Build conversation context
-            conversation_history = "\n".join([
-                f"[{item['type'].upper()}] {item['content'][:150]}..." 
-                if len(item['content']) > 150 else f"[{item['type'].upper()}] {item['content']}"
-                for item in self.qa_conversation
-            ])
-            
-            # System instruction for file requests
-            system_msg = """You are a code analysis assistant. When you need more context to answer better, 
-ask for it like: "I need to see @filename.py" or "Can you show me @other_file.py?". Be direct."""
-            
-            if conversation_history:
-                enhanced_prompt = f"{system_msg}\n\nContext:\n{conversation_history}\n\n{current_prompt}"
-            else:
-                enhanced_prompt = f"{system_msg}\n\n{current_prompt}"
-            
-            self._print_header(f"Exchange {self.qa_turn_count}/{MAX_TURNS}")
-            self._print_info("(Press ESC to interrupt)")
-            
-            # Get response from DeepSeek
-            try:
-                interruptor = StreamInterruptor()
-                interruptor.start_monitoring()
-                response = ""
-                
-                try:
-                    for token in self.client.generate(enhanced_prompt, stream=True):
-                        if interruptor.check_for_esc():
-                            print("\n⚠️  Response interrupted by user (ESC)")
-                            interruptor.interrupted = True
-                            break
-                        response += token
-                        print(token, end="", flush=True)
-                    sys.stdout.write("\r\n")
-                    sys.stdout.flush()
-                finally:
-                    interruptor.stop_monitoring()
-                
-                if not response or interruptor.interrupted:
-                    self._print_info("Conversation ended by user")
-                    break
-                
-                self.qa_conversation.append({
-                    "type": "assistant",
-                    "content": response
-                })
-                
-            except KeyboardInterrupt:
-                print("\n\n⚠️  Response interrupted by user (Ctrl-C)")
-                break
-            except OllamaError as e:
-                self._print_error(f"Generation failed: {str(e)}")
-                break
-            
-            # Detect file requests with intelligent parsing
-            file_requests, unclear_request = self._parse_file_requests(response)
-            new_files = [f for f in file_requests if f not in files_accessed]
-            
-            if unclear_request and not new_files:
-                # AI asked for files but wasn't clear
-                self._print_info("Skipping unclear file request - AI response had @ with no filename")
-            
-            if new_files and self.qa_turn_count < MAX_TURNS:
-                # Automatically load requested files
-                files_loaded = []
-                for filename in new_files:
-                    try:
-                        content = FileTools.read_file(filename)
-                        self.qa_conversation.append({
-                            "type": "context",
-                            "content": f"@{filename}:\n{content}"
-                        })
-                        files_accessed.add(filename)
-                        files_loaded.append(filename)
-                        self._print_success(f"✓ Loaded @{filename}")
-                    except ToolsError as e:
-                        self._print_error(f"✗ Could not read @{filename}")
-                
-                if files_loaded:
-                    print()
-                    current_prompt = "Continue analyzing with the files I provided above."
-                    continue
-            
-            # If still exchanges left and no file request, ask for follow-up
-            if self.qa_turn_count < MAX_TURNS:
-                print()
-                follow_up = input("Your question (or press Enter to exit): ").strip()
-                
-                if not follow_up:
-                    break
-                
-                self.qa_conversation.append({
-                    "type": "user",
-                    "content": follow_up
-                })
-                current_prompt = follow_up
-            else:
-                break
-        
-        self._print_info(f"Q&A session ended ({self.qa_turn_count}/{MAX_TURNS} exchanges)")
-        self.qa_conversation = []
-        self.qa_turn_count = 0
 
     def handle_generate(self, prompt: str, stream: bool = True) -> str:
         """Generate code from prompt.
@@ -674,7 +584,7 @@ ask for it like: "I need to see @filename.py" or "Can you show me @other_file.py
 
         self._print_header("Generating")
         self._print_info(f"Temperature: 0.7 | Top-p: 0.9")
-        self._print_info("(Press ESC to interrupt)")
+        self._print_info("(Press Ctrl-C to interrupt)")
 
         try:
             if stream:
@@ -684,8 +594,8 @@ ask for it like: "I need to see @filename.py" or "Can you show me @other_file.py
                 
                 try:
                     for token in self.client.generate(prompt, stream=True):
-                        if interruptor.check_for_esc():
-                            print("\n\n⚠️  Response interrupted by user (ESC)")
+                        if interruptor.check_for_interrupt():
+                            print("\n\n⚠️  Response interrupted by user (Ctrl-C)")
                             break
                         result += token
                         print(token, end="", flush=True)
@@ -937,37 +847,29 @@ ask for it like: "I need to see @filename.py" or "Can you show me @other_file.py
                             self._print_error(f"Unknown command: /{command}")
 
                     else:
-                        # Regular prompt for code generation
-                        # Check for @file mentions and add to context
-                        files_mentioned = []
-                        words = user_input.split()
-                        for word in words:
-                            if word.startswith("@"):
-                                filepath = word[1:]  # Remove @
-                                files_mentioned.append(filepath)
-                        
-                        # Add files to context temporarily for this generation
+                        files_mentioned, clean_prompt = self._extract_file_mentions(
+                            user_input
+                        )
                         original_context = self.context_files.copy()
-                        for filepath in files_mentioned:
-                            if filepath not in self.context_files:
-                                try:
-                                    FileTools.read_file(filepath)  # Verify exists
-                                    self.context_files.append(filepath)
-                                    self._print_success(f"Added {filepath} to context for this prompt")
-                                except ToolsError:
-                                    pass
-                        
-                        # Remove @ mentions from prompt
-                        clean_prompt = " ".join([w for w in words if not w.startswith("@")])
-                        
-                        if clean_prompt.strip():
-                            self.handle_prompt_with_file_requests(
-                                clean_prompt,
-                                stream=self.stream,
-                            )
-                        
-                        # Restore original context
-                        self.context_files = original_context
+                        try:
+                            for filepath in files_mentioned:
+                                if filepath not in self.context_files:
+                                    try:
+                                        FileTools.read_file(filepath)
+                                        self.context_files.append(filepath)
+                                        self._print_success(
+                                            f"Included @{filepath} in this prompt"
+                                        )
+                                    except ToolsError as e:
+                                        self._print_error(str(e))
+
+                            if clean_prompt:
+                                self.handle_prompt_with_file_requests(
+                                    clean_prompt,
+                                    stream=self.stream,
+                                )
+                        finally:
+                            self.context_files = original_context
 
                 except KeyboardInterrupt:
                     print()
@@ -1044,7 +946,7 @@ Examples:
             if not initialize_system(args.url, args.model):
                 sys.exit(1)
         
-        cli = DeepXCLI(
+        cli = CodeSmithCLI(
             ollama_url=args.url,
             model=args.model,
             stream=not args.no_stream,

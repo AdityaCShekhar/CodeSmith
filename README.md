@@ -15,38 +15,49 @@ A powerful CLI tool for code generation using a local Ollama instance. Think of 
 ## Architecture
 
 ```
-cli.py          # Main entry point with REPL loop
-├── llm.py      # Ollama API client with streaming
-├── tools.py    # File operations and shell execution
-└── docker-compose.yml  # Complete setup
+CodeSmith/
+├── src/codesmith/          # Installable Python package
+│   ├── cli.py              # Interactive CLI and command handling
+│   ├── llm.py              # Ollama API client
+│   ├── tools.py            # File and context utilities
+│   └── batch.py            # Batch-generation entry point
+├── examples/               # Runnable examples and sample input
+├── docs/                   # Project documentation
+├── scripts/                # Setup and maintenance helpers
+├── codesmith               # macOS/Linux launcher
+├── codesmith.cmd           # Windows launcher
+├── pyproject.toml          # Package metadata and entry points
+├── Dockerfile
+└── docker-compose.yml
 ```
 
 ### Components
 
-- **cli.py**: Interactive REPL with color-coded output and command handling
-- **llm.py**: Ollama API client with streaming support and error handling
-- **tools.py**: File I/O, shell execution, and context injection utilities
-- **requirements.txt**: Python dependencies
+- **src/codesmith/cli.py**: Interactive REPL with color-coded output and command handling
+- **src/codesmith/llm.py**: Ollama API client with streaming support and error handling
+- **src/codesmith/tools.py**: File I/O and context injection utilities
+- **src/codesmith/batch.py**: Non-interactive batch generation
+- **pyproject.toml**: Package metadata, dependencies, and CLI entry points
 
 ## Requirements
 
 - Python 3.8+
 - Docker & Docker Compose (for containerized setup)
-- OR Ollama running locally at `http://ollama:11434`
+- OR Ollama running locally at `http://localhost:11434`
 
 ## Quick Command Setup
 
-To use `codesmith` command from anywhere:
+To use `codesmith` from anywhere on macOS or Linux:
 
 ```bash
 # Option 1: Add to PATH (recommended)
-export PATH="/Users/aditya/Projects/DeepX:$PATH"
+export PATH="/path/to/CodeSmith:$PATH"
 
 # Add to ~/.zshrc or ~/.bashrc to make permanent:
-echo 'export PATH="/Users/aditya/Projects/DeepX:$PATH"' >> ~/.zshrc
+echo 'export PATH="/path/to/CodeSmith:$PATH"' >> ~/.zshrc
 
 # Or symlink to /usr/local/bin
-sudo ln -sf /Users/aditya/Projects/DeepX/codesmith /usr/local/bin/codesmith
+sudo ln -sf /path/to/CodeSmith/codesmith /usr/local/bin/codesmith
 ```
 
 Then simply type:
@@ -54,6 +65,16 @@ Then simply type:
 codesmith                    # Interactive mode
 codesmith -p "Your prompt"   # Single command
 ```
+
+On Windows, add the CodeSmith repository directory to your User `PATH` in
+Settings, restart Windows Terminal, and run:
+
+```powershell
+codesmith
+codesmith -p "Your prompt"
+```
+
+Windows automatically uses `codesmith.cmd`; macOS and Linux use `codesmith`.
 
 ## Installation & Setup
 
@@ -63,16 +84,16 @@ The easiest way to run everything together:
 
 ```bash
 # Clone/navigate to the project
-cd /Users/aditya/Projects/DeepX
+cd /path/to/CodeSmith
 
 # Start Ollama (model auto-pulls when CLI starts)
-docker-compose up -d
+docker compose up -d
 
 # Run the CLI
-deepc
+codesmith
 
 # Stop everything
-docker-compose down
+docker compose down
 ```
 
 ### Option 2: Local Installation
@@ -96,7 +117,7 @@ docker-compose down
 
 4. **Run the CLI:**
    ```bash
-   python3 cli.py
+   codesmith
    ```
 
 ## Usage
@@ -109,7 +130,7 @@ codesmith
 
 Or:
 ```bash
-python3 cli.py
+codesmith
 ```
 
 ### Single Prompt Mode
@@ -120,7 +141,7 @@ codesmith -p "Write a Python function to calculate fibonacci"
 
 Or:
 ```bash
-python3 cli.py -p "Write a Python function to calculate fibonacci"
+codesmith -p "Write a Python function to calculate fibonacci"
 ```
 
 ### Custom Ollama URL and Model
@@ -131,7 +152,7 @@ codesmith --url http://localhost:11434 --model deepseek-coder:1.3b
 
 Or:
 ```bash
-python3 cli.py --url http://localhost:11434 --model deepseek-coder:1.3b
+codesmith --url http://localhost:11434 --model deepseek-coder:1.3b
 ```
 
 ## Commands
@@ -235,11 +256,11 @@ All tests passed!
 ## Command-Line Options
 
 ```bash
-python3 cli.py --help
+codesmith --help
 
 options:
   -h, --help            show this help message and exit
-  -u URL, --url URL     Ollama server URL (default: http://ollama:11434)
+  -u URL, --url URL     Ollama server URL (default: http://localhost:11434)
   -m MODEL, --model MODEL
                         Model name (default: deepseek-coder:1.3b)
   -p PROMPT, --prompt PROMPT
@@ -306,7 +327,7 @@ codesmith-batch <config.json>
 codesmith-batch <output_file> "<prompt>" --model mistral:latest
 ```
 
-**See [AUTOMATION.md](AUTOMATION.md) for complete automation guide**
+**See [AUTOMATION.md](docs/AUTOMATION.md) for complete automation guide**
 
 ## Docker Usage
 
@@ -314,32 +335,32 @@ codesmith-batch <output_file> "<prompt>" --model mistral:latest
 
 ```bash
 # Start both Ollama and CLI services
-docker-compose up -d ollama
+docker compose up -d ollama
 
 # Start the CLI (automatically pulls model on first run)
-docker-compose run --rm deepx-cli
+docker compose run --rm codesmith-cli
 
 # Or use the codesmith command shortcut
-deepc
+codesmith
 
 # View Ollama logs
-docker-compose logs ollama
+docker compose logs ollama
 
 # Stop everything
-docker-compose down -v
+docker compose down -v
 ```
 
 ### Using Docker with Local Ollama
 
 ```bash
 # Build the image
-docker build -t deepx-cli .
+docker build -t codesmith-cli .
 
 # Run the container (connect to local Ollama)
 docker run -it --rm \
   -e OLLAMA_URL=http://host.docker.internal:11434 \
   -v $(pwd)/workspace:/workspace \
-  deepx-cli
+  codesmith-cli
 ```
 
 ## Features in Detail
@@ -397,29 +418,29 @@ All operations include graceful error handling:
 
 ### Docker Compose Issues
 
-#### "dependency failed to start: container deepx-ollama is unhealthy"
+#### "dependency failed to start: container codesmith-ollama is unhealthy"
 
 This happens when Docker Compose's health check times out. The fix:
 
 ```bash
 # Check if Ollama is actually running
-docker-compose ps
+docker compose ps
 
 # View Ollama logs to see what's happening
-docker-compose logs ollama --tail=50
+docker compose logs ollama --tail=50
 
 # Try restarting Ollama
-docker-compose restart ollama
+docker compose restart ollama
 
 # Clean restart (removes containers but keeps data)
-docker-compose down
-docker-compose up -d ollama
-docker-compose run --rm deepx-cli
+docker compose down
+docker compose up -d ollama
+docker compose run --rm codesmith-cli
 
 # Full clean (removes everything including volumes)
-docker-compose down -v
-docker-compose build
-docker-compose run --rm deepx-cli
+docker compose down -v
+docker compose build
+docker compose run --rm codesmith-cli
 ```
 
 **Why it happens**: 
@@ -427,7 +448,7 @@ docker-compose run --rm deepx-cli
 - Docker health check is too strict
 - System resources (disk I/O, CPU) are limiting startup
 
-**The init.py script handles this**: It waits up to 2 minutes for Ollama instead of 30 seconds.
+**CodeSmith handles this during startup**: It waits up to 2 minutes for Ollama to become ready.
 
 ### "Cannot connect to Ollama"
 
@@ -437,7 +458,7 @@ Ensure Ollama is running:
 curl http://localhost:11434/api/tags
 
 # Or with docker
-docker-compose exec ollama curl http://localhost:11434/api/tags
+docker compose exec ollama curl http://localhost:11434/api/tags
 ```
 
 ### Model not found
@@ -446,16 +467,16 @@ The model is checked automatically on CLI startup. If it's not available:
 
 ```bash
 # Check what's installed
-docker-compose exec ollama ollama list
+docker compose exec ollama ollama list
 
 # Manually pull if needed
-docker-compose exec ollama ollama pull deepseek-coder:1.3b
+docker compose exec ollama ollama pull deepseek-coder:1.3b
 ```
 
 ### Slow responses
 
 - Reduce context file size
-- Use a faster model: `python3 cli.py --model mistral:latest`
+- Use a faster model: `codesmith --model mistral:latest`
 - Increase Docker memory allocation (Settings → Resources)
 - Reduce temperature for faster inference (in code)
 
@@ -477,20 +498,19 @@ ports:
 
 ## Architecture Details
 
-### LLM Module (`llm.py`)
+### LLM Module (`src/codesmith/llm.py`)
 
 - **OllamaClient**: Manages communication with Ollama API
 - **Streaming**: Real-time token generation
 - **Error Handling**: Connection validation and timeout management
 - **Model Management**: List available models
 
-### Tools Module (`tools.py`)
+### Tools Module (`src/codesmith/tools.py`)
 
 - **FileTools**: Read, write, and inspect files
-- **ShellTools**: Safe command execution with output capture
 - **ContextInjector**: Embed file contents into prompts
 
-### CLI Module (`cli.py`)
+### CLI Module (`src/codesmith/cli.py`)
 
 - **CodeSmithCLI**: Main application class
 - **REPL Loop**: Interactive command processing

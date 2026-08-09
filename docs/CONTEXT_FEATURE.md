@@ -9,22 +9,22 @@ The `@` symbol in CodeSmith allows you to easily add file context to your code g
 ### 1. Type a prompt with @ mention
 
 ```
-> Write a test for @cli.py
+> Write a test for @src/codesmith/cli.py
 ```
 
 ### 2. Press Tab for autocomplete
 
 Start typing `@` and files will appear:
 ```
-@cli.py
-@llm.py
-@tools.py
-@ARCHITECTURE.md
+@src/codesmith/cli.py
+@src/codesmith/llm.py
+@src/codesmith/tools.py
+@docs/ARCHITECTURE.md
 ```
 
 ### 3. AI generates code with file context
 
-The model sees the contents of `cli.py` and can write tests based on its actual implementation.
+The model sees the contents of `src/codesmith/cli.py` and can write tests based on its actual implementation.
 
 ## Features
 
@@ -49,7 +49,7 @@ Search for files by typing part of the name:
 ```
 > Fix the bug in @too
 <Shows only files containing "too">
-@tools.py    Include for this prompt
+@src/codesmith/tools.py    Include for this prompt
 ```
 
 ### 📁 Multiple File Context
@@ -57,17 +57,17 @@ Search for files by typing part of the name:
 Include multiple files by using `@` multiple times:
 
 ```
-> Create integration between @cli.py and @llm.py
+> Create integration between @src/codesmith/cli.py and @src/codesmith/llm.py
 
-✓ Added cli.py to context for this prompt
-✓ Added llm.py to context for this prompt
+✓ Added src/codesmith/cli.py to context for this prompt
+✓ Added src/codesmith/llm.py to context for this prompt
 ```
 
 ### 📌 Temporary Context
 
 File mentions apply to the current prompt only:
 ```
-> Write a test for @cli.py
+> Write a test for @src/codesmith/cli.py
 (File context is used for this prompt only)
 ```
 
@@ -78,19 +78,19 @@ To use the same file in another prompt, mention it again.
 ### Example 1: Write a test for existing code
 
 ```
-> Write unit tests for the OllamaClient class in @llm.py
+> Write unit tests for the OllamaClient class in @src/codesmith/llm.py
 
-✓ Added llm.py to context for this prompt
+✓ Added src/codesmith/llm.py to context for this prompt
 
-<AI reviews llm.py and generates tests>
+<AI reviews src/codesmith/llm.py and generates tests>
 ```
 
 ### Example 2: Create feature based on patterns
 
 ```
-> Looking at the structure in @cli.py, create a new handler for /analyze command
+> Looking at the structure in @src/codesmith/cli.py, create a new handler for /analyze command
 
-✓ Added cli.py to context for this prompt
+✓ Added src/codesmith/cli.py to context for this prompt
 
 <AI reviews the CLI structure and implements similar patterns>
 ```
@@ -98,10 +98,10 @@ To use the same file in another prompt, mention it again.
 ### Example 3: Multi-file integration
 
 ```
-> Create a new ShellTools method in @tools.py that integrates with the error handling in @llm.py
+> Add a FileTools helper in @src/codesmith/tools.py that integrates with the error handling in @src/codesmith/llm.py
 
-✓ Added tools.py to context for this prompt  
-✓ Added llm.py to context for this prompt
+✓ Added src/codesmith/tools.py to context for this prompt  
+✓ Added src/codesmith/llm.py to context for this prompt
 
 <AI creates code that fits both files' patterns>
 ```
@@ -109,10 +109,10 @@ To use the same file in another prompt, mention it again.
 ### Example 4: Documentation based on code
 
 ```
-> Update the section in @README.md for the OllamaClient based on @llm.py
+> Update the section in @README.md for the OllamaClient based on @src/codesmith/llm.py
 
 ✓ Added README.md to context for this prompt
-✓ Added llm.py to context for this prompt
+✓ Added src/codesmith/llm.py to context for this prompt
 
 <AI updates documentation to match actual implementation>
 ```
@@ -158,7 +158,7 @@ With context, ask more specific questions:
 
 ```
 // Good
-> Write a test for the read_file method in @tools.py
+> Write a test for the read_file method in @src/codesmith/tools.py
 
 // Not as good (without context)
 > Write a test for reading files
@@ -169,12 +169,12 @@ With context, ask more specific questions:
 Reference multiple files to understand patterns:
 
 ```
-> Looking at how commands are handled in @cli.py and 
-  the tool patterns in @tools.py, implement a new 
+> Looking at how commands are handled in @src/codesmith/cli.py and 
+  the tool patterns in @src/codesmith/tools.py, implement a new 
   handler called /validate
 
-✓ Added cli.py to context for this prompt
-✓ Added tools.py to context for this prompt
+✓ Added src/codesmith/cli.py to context for this prompt
+✓ Added src/codesmith/tools.py to context for this prompt
 ```
 
 ### 🔄 Iterative Development
@@ -182,9 +182,9 @@ Reference multiple files to understand patterns:
 Use temporary file context for focused prompts:
 
 ```
-> Looking at @cli.py, add a new command handler and include error handling.
+> Looking at @src/codesmith/cli.py, add a new command handler and include error handling.
 
-> Write tests for the handler in @cli.py.
+> Write tests for the handler in @src/codesmith/cli.py.
 ```
 
 ### 💾 Save Generated Code
@@ -192,11 +192,11 @@ Use temporary file context for focused prompts:
 After generation, save directly:
 
 ```
-> Write a test class for @cli.py
+> Write a test class for @src/codesmith/cli.py
 
 (AI generates test code)
 
-> /write test_cli.py
+> /write test_src/codesmith/cli.py
 
 Enter content (Ctrl+D to save):
 <paste generated code>
@@ -207,7 +207,7 @@ Enter content (Ctrl+D to save):
 ### Refactoring
 
 ```
-> Refactor the OllamaClient initialization in @llm.py to use a connection pool
+> Refactor the OllamaClient initialization in @src/codesmith/llm.py to use a connection pool
 
 The AI sees the current implementation and suggests improvements
 ```
@@ -215,8 +215,8 @@ The AI sees the current implementation and suggests improvements
 ### Feature Addition
 
 ```
-> Add a streaming option to the handle_generate method in @cli.py, 
-  based on the existing streaming pattern in @llm.py
+> Add a streaming option to the handle_generate method in @src/codesmith/cli.py, 
+  based on the existing streaming pattern in @src/codesmith/llm.py
 
 The AI has both files' context and can implement consistently
 ```
@@ -224,7 +224,7 @@ The AI has both files' context and can implement consistently
 ### Documentation
 
 ```
-> Update the docstrings in @cli.py to match the documentation in @README.md
+> Update the docstrings in @src/codesmith/cli.py to match the documentation in @README.md
 
 AI can keep docs and code in sync
 ```
@@ -232,7 +232,7 @@ AI can keep docs and code in sync
 ### Bug Fixing
 
 ```
-> There's a bug when the context is empty. Fix it in @cli.py
+> There's a bug when the context is empty. Fix it in @src/codesmith/cli.py
 
 AI sees the actual code and can spot the issue
 ```
@@ -255,7 +255,7 @@ Test with:
 
 - Ensure there's a space before `@`: `> text @file.py` ✓
 - Don't use `@ filename` (space between @ and name)
-- Use complete or partial filename: `@cli.py` or `@cli`
+- Use complete or partial filename: `@src/codesmith/cli.py` or `@cli`
 
 ### Changes not reflected in generated code?
 

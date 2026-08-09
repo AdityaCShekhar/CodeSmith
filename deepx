@@ -1,7 +1,0 @@
-#!/bin/bash
-# Backward-compatible alias for CodeSmith.
-# Place this in /usr/local/bin or add project to PATH
-# Now supports running from any directory without init.py dependency
-
-PROJECT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-exec "$PROJECT_DIR/codesmith" "$@"

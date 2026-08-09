@@ -20,8 +20,8 @@ codesmith --skip-init          # Skip initialization
 ## @ File Context
 
 ```
-> Write a test for @cli.py
-> Refactor @cli.py and @tools.py
+> Write a test for @src/codesmith/cli.py
+> Refactor @src/codesmith/cli.py and @src/codesmith/tools.py
 Press Tab for autocomplete
 ```
 
@@ -38,7 +38,7 @@ Press Tab for autocomplete
 ## Setup
 
 ```bash
-echo 'export PATH="/Users/aditya/Projects/DeepX:$PATH"' >> ~/.zshrc
+echo 'export PATH="/path/to/CodeSmith:$PATH"' >> ~/.zshrc
 source ~/.zshrc
 codesmith
 ```

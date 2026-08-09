@@ -18,7 +18,7 @@ ls -la quicksort.py
 
 ```bash
 # Generate multiple files from config
-codesmith-batch batch_example.json
+codesmith-batch examples/batch_example.json
 
 # Or create your own batch.json
 codesmith-batch my_batch.json
@@ -30,7 +30,7 @@ First, ensure you have the automation scripts available:
 
 ```bash
 # Add to PATH (same as codesmith)
-export PATH="/Users/aditya/Projects/DeepX:$PATH"
+export PATH="/path/to/CodeSmith:$PATH"
 
 # Then from anywhere:
 codesmith-batch quicksort.py "Your prompt here"
@@ -219,7 +219,7 @@ python3 main.py
 
 ### "Ollama not running"
 ```bash
-docker-compose up -d ollama
+docker compose up -d ollama
 ```
 
 ### "File not found"
@@ -237,8 +237,8 @@ python3 -m json.tool batch.json
 
 ### Model not available
 ```bash
-docker-compose exec ollama ollama list
-docker-compose exec ollama ollama pull deepseek-coder:1.3b
+docker compose exec ollama ollama list
+docker compose exec ollama ollama pull deepseek-coder:1.3b
 ```
 
 ## Batch JSON Schema
@@ -273,7 +273,7 @@ codesmith-batch TUTORIAL.md "Write a beginner's tutorial"
 
 ### Generate Configuration Files
 ```bash
-codesmith-batch docker-compose.yml "Create docker-compose for Python app"
+codesmith-batch docker-compose.yml "Create docker compose for Python app"
 codesmith-batch Dockerfile "Generate production-ready Dockerfile"
 codesmith-batch .env.example "Create environment variables template"
 ```

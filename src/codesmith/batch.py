@@ -10,12 +10,8 @@ import argparse
 import os
 from pathlib import Path
 
-try:
-    from llm import OllamaClient
-    from tools import FileTools
-except ImportError:
-    print("Error: Please run from CodeSmith project directory")
-    sys.exit(1)
+from .llm import OllamaClient
+from .tools import FileTools
 
 def generate_single(output_file: str, prompt: str, model: str = "deepseek-coder:1.3b", ollama_url: str = None) -> bool:
     """Generate code and save to file."""

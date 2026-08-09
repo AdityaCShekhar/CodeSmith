@@ -35,9 +35,9 @@ using Ollama. It allows you to:
 ═══════════════════════════════════════════════════════════════════════
 
 Core Modules:
-  └─ cli.py          → Main CLI application with REPL loop
-  └─ llm.py          → Ollama API client with streaming support
-  └─ tools.py        → File operations and shell utilities
+  └─ src/codesmith/cli.py          → Main CLI application with REPL loop
+  └─ src/codesmith/llm.py          → Ollama API client with streaming support
+  └─ src/codesmith/tools.py        → File and context utilities
 
 Configuration:
   └─ requirements.txt → Python dependencies
@@ -47,10 +47,10 @@ Configuration:
 Documentation:
   └─ README.md        → Complete documentation
   └─ ARCHITECTURE.md  → Design and implementation details
-  └─ setup.sh         → Automated setup script
+  └─ scripts/setup.sh         → Automated setup script
 
 Examples:
-  └─ demo.py          → Usage demonstration script
+  └─ examples/demo.py          → Usage demonstration script
 
 ═══════════════════════════════════════════════════════════════════════
 3️⃣  QUICK SETUP (DOCKER COMPOSE - RECOMMENDED)
@@ -64,10 +64,10 @@ Prerequisites:
 Setup Steps:
 
 1. Clone/navigate to project:
-   $ cd /Users/aditya/Projects/DeepX
+   $ cd /path/to/CodeSmith
 
 2. Start services:
-   $ docker-compose up -d ollama
+   $ docker compose up -d ollama
 
 3. Start the CLI (auto-pulls model on first run):
    $ codesmith
@@ -76,7 +76,7 @@ Setup Steps:
    ✓ Next times: instant startup
 
 4. Monitor progress (if needed):
-   $ docker-compose logs -f ollama
+   $ docker compose logs -f ollama
 
 ═══════════════════════════════════════════════════════════════════════
 4️⃣  RUNNING THE CLI
@@ -94,11 +94,11 @@ Option A: Using codesmith command (fast)
   $ codesmith -p "Write hello world"
 
 Option B: Using Docker Compose
-  $ docker-compose run --rm deepx-cli
+  $ docker compose run --rm codesmith-cli
 
 Option C: Local Python (requires Ollama running separately)
   $ pip install -r requirements.txt
-  $ python3 cli.py
+  $ codesmith
 
 Option D: Custom Ollama URL
   $ codesmith --url http://localhost:11434 --model deepseek-coder:1.3b
@@ -203,14 +203,14 @@ Utilities:
 
 Problem: "Cannot connect to Ollama at http://ollama:11434"
 Solution: 
-  • Make sure Ollama is running: docker-compose ps
-  • Check logs: docker-compose logs ollama
+  • Make sure Ollama is running: docker compose ps
+  • Check logs: docker compose logs ollama
   • Verify with: curl http://localhost:11434/api/tags (if local)
-  • Start Ollama: docker-compose up -d ollama
+  • Start Ollama: docker compose up -d ollama
 
 Problem: "Model deepseek-coder:1.3b not found"
 Solution:
-  • Pull the model: docker-compose exec ollama ollama pull deepseek-coder:1.3b
+  • Pull the model: docker compose exec ollama ollama pull deepseek-coder:1.3b
   • Check available: /models
 
 Problem: Slow responses
@@ -233,23 +233,23 @@ USEFUL DOCKER COMMANDS
 ═══════════════════════════════════════════════════════════════════════
 
 View running containers:
-  $ docker-compose ps
+  $ docker compose ps
 
 View logs:
-  $ docker-compose logs -f ollama    # Ollama logs
-  $ docker-compose logs -f            # All logs
+  $ docker compose logs -f ollama    # Ollama logs
+  $ docker compose logs -f            # All logs
 
 Stop services:
-  $ docker-compose down
+  $ docker compose down
 
 Stop and remove volumes:
-  $ docker-compose down -v
+  $ docker compose down -v
 
 Restart Ollama:
-  $ docker-compose restart ollama
+  $ docker compose restart ollama
 
 Access Ollama shell directly:
-  $ docker-compose exec ollama bash
+  $ docker compose exec ollama bash
 
 ═══════════════════════════════════════════════════════════════════════
 ADVANCED USAGE
@@ -261,20 +261,20 @@ ADVANCED USAGE
    /models
 
    Use different model (if installed):
-   python3 cli.py --model codellama:latest
+   codesmith --model codellama:latest
 
    Pull new model to Ollama:
-   docker-compose exec ollama ollama pull your-model-name
+   docker compose exec ollama ollama pull your-model-name
 
 2. Disable Streaming (slower start, full response at once)
-   python3 cli.py --no-stream
+   codesmith --no-stream
 
 3. Run in background:
-   docker-compose run -d deepx-cli
-   # Then interact via docker-compose exec
+   docker compose run -d codesmith-cli
+   # Then interact via docker compose exec
 
 4. Mount a workspace directory for easier file access:
-   docker-compose run --rm -v $(pwd):/workspace deepx-cli
+   docker compose run --rm -v $(pwd):/workspace codesmith-cli
 
 ═══════════════════════════════════════════════════════════════════════
 PERFORMANCE TIPS
@@ -290,25 +290,25 @@ PERFORMANCE TIPS
 NEXT STEPS
 ═══════════════════════════════════════════════════════════════════════
 
-1. Run the CLI: docker-compose run --rm deepx-cli
+1. Run the CLI: docker compose run --rm codesmith-cli
 2. Type /help to see all commands
 3. Generate your first code: "Write a hello world program"
 5. Read README.md for complete documentation
 6. Check ARCHITECTURE.md for technical details
-7. Try the demo script: python3 demo.py
+7. Try the demo script: python3 examples/demo.py
 
 ═══════════════════════════════════════════════════════════════════════
 CLEANUP
 ═══════════════════════════════════════════════════════════════════════
 
 To stop and remove everything:
-  $ docker-compose down -v
+  $ docker compose down -v
 
 To remove just the containers but keep data:
-  $ docker-compose down
+  $ docker compose down
 
 To remove images too:
-  $ docker-compose down --rmi all
+  $ docker compose down --rmi all
 
 ═══════════════════════════════════════════════════════════════════════
 

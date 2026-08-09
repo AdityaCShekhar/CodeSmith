@@ -2,6 +2,7 @@
 """Demonstrate CodeSmith's temporary @filename context workflow."""
 
 from pathlib import Path
+from typing import List
 
 
 SKIP_DIRS = {
@@ -11,9 +12,9 @@ SKIP_DIRS = {
 SKIP_EXTENSIONS = {".pyc", ".pyo", ".so", ".egg-info"}
 
 
-def discover_files(workspace: Path, max_depth: int = 3) -> list[str]:
+def discover_files(workspace: Path, max_depth: int = 3) -> List[str]:
     """Return files available for @ autocomplete."""
-    files: list[str] = []
+    files: List[str] = []
 
     def walk(directory: Path, depth: int) -> None:
         if depth > max_depth:
@@ -58,9 +59,9 @@ How to use temporary file context:
   2. Type part of a filename, such as @cli, to filter the list.
   3. Select a file and include it in your prompt:
 
-      ➜ Explain @cli.py
-      ➜ Write tests for @tools.py
-      ➜ Compare @llm.py with @tools.py
+      ➜ Explain @src/codesmith/cli.py
+      ➜ Write tests for @src/codesmith/tools.py
+      ➜ Compare @src/codesmith/llm.py with @src/codesmith/tools.py
 
 The mentioned files are included for that prompt only. Mention them again
 when they are needed in a later prompt.
@@ -69,4 +70,3 @@ when they are needed in a later prompt.
 
 if __name__ == "__main__":
     demo_file_discovery()
-

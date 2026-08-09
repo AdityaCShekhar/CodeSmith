@@ -4,26 +4,33 @@
 
 ```
 CodeSmith/
-├── cli.py                  # Main CLI application (entry point)
-├── llm.py                  # Ollama API client
-├── tools.py                # File and shell utilities
-├── demo.py                 # Usage demonstration
-├── requirements.txt        # Python dependencies
+├── src/codesmith/
+│   ├── __init__.py         # Package metadata
+│   ├── __main__.py         # python -m codesmith entry point
+│   ├── cli.py              # Interactive CLI
+│   ├── llm.py              # Ollama API client
+│   ├── tools.py            # File and context utilities
+│   └── batch.py            # Batch generation
+├── examples/               # Demos and batch input examples
+├── docs/                   # Extended documentation
+├── scripts/                # Setup and maintenance helpers
+├── codesmith               # macOS/Linux launcher
+├── codesmith.cmd           # Windows launcher
+├── pyproject.toml          # Package and entry-point configuration
+├── requirements.txt        # Editable-install shortcut
 ├── Dockerfile              # Docker image definition
 ├── docker-compose.yml      # Container orchestration
-├── setup.sh                # Automated setup script
-├── .gitignore              # Git ignore rules
-└── README.md               # Complete documentation
+└── README.md               # Main documentation
 ```
 
 ## Module Design
 
-### 1. CLI Module (`cli.py`)
+### 1. CLI Module (`src/codesmith/cli.py`)
 
 **Purpose**: Main application interface with REPL loop and command handling.
 
 **Key Classes**:
-- `CodexCLI`: Main application class
+- `CodeSmithCLI`: Main application class
   - Initialization & Ollama connection
   - REPL loop management
   - Command dispatching
@@ -41,7 +48,7 @@ CodeSmith/
 - Error recovery
 - Command-line argument parsing
 
-### 2. LLM Module (`llm.py`)
+### 2. LLM Module (`src/codesmith/llm.py`)
 
 **Purpose**: Abstract Ollama API interactions with streaming support.
 
@@ -66,20 +73,15 @@ CodeSmith/
 - Graceful error handling with detailed messages
 - Timeout management (120 seconds)
 
-### 3. Tools Module (`tools.py`)
+### 3. Tools Module (`src/codesmith/tools.py`)
 
-**Purpose**: File operations, shell execution, and context management.
+**Purpose**: File operations and context management.
 
 **Key Classes**:
 - `FileTools`: File system operations
   - Read files safely
   - Write files with directory creation
   - Get file information
-  
-- `ShellTools`: Command execution
-  - Run commands with output capture
-  - Timeout handling
-  - Safe command execution with formatted output
   
 - `ContextInjector`: Embed file content in prompts
   - Read and inject multiple files
@@ -90,8 +92,6 @@ CodeSmith/
 - Exception-based error handling
 - Path resolution to absolute paths
 - Directory auto-creation
-- Command timeout protection (30 seconds)
-- Formatted output with STDOUT/STDERR separation
 
 ## Data Flow
 
@@ -108,15 +108,10 @@ CLI Command Parser
     │           └→ Non-streaming: Full response
     │               └→ Display formatted output
     │
-    ├→ /write command
-    │   └→ FileTools.write_file()
-    │       └→ Display success message
-    │
-    │   └→ FileTools.read_file()
-    │       └→ Display file content
-    │
-        └→ ShellTools.run_command()
-            └→ Display output
+    └→ /write command
+        ├→ Generate a code-only response
+        └→ FileTools.write_file()
+            └→ Display success message
 ```
 
 ### Context Injection Flow
@@ -247,7 +242,7 @@ When generating:
    - Output fully captured before display
 
 3. **Ollama Integration**:
-   - Local network only (docker-compose)
+   - Local network only (compose)
    - No authentication in base setup
    - Add firewall rules in production
 
@@ -255,7 +250,7 @@ When generating:
 
 ### Adding New Commands
 
-1. Add handler method to `CodexCLI` class
+1. Add a handler method to the `CodeSmithCLI` class
 2. Add condition in `repl()` method
 3. Call handler with parsed arguments
 
@@ -268,15 +263,15 @@ elif command == "translate":
 
 ### Adding New Tools
 
-1. Create new class in `tools.py`
-2. Add instance method to `CodexCLI`
+1. Create new class in `src/codesmith/tools.py`
+2. Add an instance method to `CodeSmithCLI`
 3. Integrate in REPL loop
 
 ### Custom Models
 
 Change model in initialization:
 ```python
-cli = CodexCLI(model="your-model:tag")
+cli = CodeSmithCLI(model="your-model:tag")
 ```
 
 ## Testing Recommendations
@@ -289,9 +284,9 @@ cli = CodexCLI(model="your-model:tag")
 ## Deployment Considerations
 
 ### Docker Deployment
-- Use `docker-compose` for all services
+- Use `compose` for all services
 - Mount volumes for temporary data
-- Network isolation via compose networks
+- Network isolation via docker compose networks
 
 ### Local Deployment
 - Ensure Ollama is running and accessible
@@ -341,13 +336,13 @@ Currently uses print statements. For production:
 ### Starting the CLI
 ```bash
 # Interactive mode
-python3 cli.py
+codesmith
 
 # Single prompt
-python3 cli.py -p "Write factorial function"
+codesmith -p "Write factorial function"
 
 # Custom Ollama URL
-python3 cli.py --url http://localhost:11434
+codesmith --url http://localhost:11434
 ```
 
 ### Common Workflows

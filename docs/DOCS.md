@@ -23,7 +23,7 @@
 
 ```bash
 # Setup
-echo 'export PATH="/Users/aditya/Projects/DeepX:$PATH"' >> ~/.zshrc
+echo 'export PATH="/path/to/CodeSmith:$PATH"' >> ~/.zshrc
 source ~/.zshrc
 
 # Run

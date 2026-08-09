@@ -1,15 +1,21 @@
 # CodeSmith - Setup & Usage
 
-## Quick Start
+## Quick Start — macOS and Linux
 
 ```bash
 # 1. Add to PATH (one-time)
-echo 'export PATH="/Users/aditya/Projects/DeepX:$PATH"' >> ~/.zshrc
+echo 'export PATH="/path/to/CodeSmith:$PATH"' >> ~/.zshrc
 source ~/.zshrc
 
 # 2. Run from anywhere
 codesmith
 ```
+
+## Quick Start — Windows
+
+Add the CodeSmith repository directory to your User `PATH`, restart Windows
+Terminal, and run `codesmith`. The `codesmith.cmd` launcher preserves the
+current repository as your workspace.
 
 ## Run Options
 
@@ -32,13 +38,13 @@ codesmith --skip-init                 # Skip initialization
 Add files to your prompt with `@`:
 
 ```
-> Write a test for @cli.py
-✓ Added cli.py to context
+> Write a test for @src/codesmith/cli.py
+✓ Added src/codesmith/cli.py to context
 
-> Refactor based on patterns in @cli.py and @tools.py
+> Refactor based on patterns in @src/codesmith/cli.py and @src/codesmith/tools.py
 ```
 
-Press **Tab** after `@` to see autocomplete suggestions.
+Type `@` to see autocomplete suggestions immediately. Press **Tab** to select.
 
 ## Getting Good Responses
 

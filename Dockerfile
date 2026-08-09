@@ -2,15 +2,10 @@ FROM python:3.11-slim
 
 WORKDIR /app
 
-# Install dependencies
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+# Install the packaged application and its dependencies.
+COPY pyproject.toml README.md ./
+COPY src ./src
+RUN pip install --no-cache-dir .
 
-# Copy application code
-COPY cli.py llm.py tools.py init.py ./
-
-# Make scripts executable
-RUN chmod +x cli.py init.py
-
-# Set the entry point
-ENTRYPOINT ["python3", "init.py"]
+# Use the installed console entry point from any mounted working directory.
+ENTRYPOINT ["codesmith"]

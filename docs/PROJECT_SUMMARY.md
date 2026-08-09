@@ -10,25 +10,20 @@ All requirements have been successfully implemented. CodeSmith is a **production
 
 ```
 CodeSmith/
-├── Core Application
-│   ├── cli.py              (Main REPL + command handling)
+├── src/codesmith/          (Installable application package)
+│   ├── cli.py              (Interactive CLI)
 │   ├── llm.py              (Ollama API integration)
-│   └── tools.py            (File/shell utilities + context injection)
-│
-├── Configuration & Deployment
-│   ├── requirements.txt     (Python dependencies)
-│   ├── Dockerfile          (Container image)
-│   ├── docker-compose.yml  (Full stack orchestration)
-│   └── setup.sh            (Automated setup script)
-│
-├── Documentation
-│   ├── README.md           (Complete user guide)
-│   ├── QUICKSTART.md       (Fast setup instructions)
-│   ├── ARCHITECTURE.md     (Technical design)
-│   └── PROJECT_SUMMARY.md  (This file)
-│
-└── Examples & Utilities
-    └── demo.py             (Feature demonstration)
+│   ├── tools.py            (File and context utilities)
+│   └── batch.py            (Batch generation)
+├── examples/               (Demos and sample batch input)
+├── docs/                   (Extended documentation)
+├── scripts/                (Setup and maintenance helpers)
+├── codesmith               (macOS/Linux launcher)
+├── codesmith.cmd           (Windows launcher)
+├── pyproject.toml          (Packaging and entry points)
+├── Dockerfile              (Container image)
+├── docker-compose.yml      (Container orchestration)
+└── README.md               (Main user guide)
 ```
 
 ---
@@ -62,15 +57,10 @@ CodeSmith/
   - Automatic directory creation
   - Safe path handling
 
-✅ **Shell Command Execution**
-  - Output capture (STDOUT/STDERR separation)
-  - 30-second command timeout
-  - Exit code reporting
-
 ✅ **Project Architecture**
-  - **cli.py**: Entry point + REPL (200+ lines)
-  - **llm.py**: Ollama client (150+ lines)
-  - **tools.py**: Utilities (200+ lines)
+  - **src/codesmith/cli.py**: Entry point + REPL (200+ lines)
+  - **src/codesmith/llm.py**: Ollama client (150+ lines)
+  - **src/codesmith/tools.py**: Utilities (200+ lines)
   - Clean separation of concerns
   - Error handling throughout
 
@@ -101,15 +91,15 @@ CodeSmith/
 ### Quick Start (Docker Compose - Recommended)
 
 ```bash
-cd /Users/aditya/Projects/DeepX
+cd /path/to/CodeSmith
 
 # Automated setup
-./setup.sh
+bash scripts/setup.sh
 
 # Manual setup
-docker-compose up -d ollama
-docker-compose exec ollama ollama pull deepseek-coder:1.3b
-docker-compose run --rm deepx-cli
+docker compose up -d ollama
+docker compose exec ollama ollama pull deepseek-coder:1.3b
+docker compose run --rm codesmith-cli
 ```
 
 ### Local Python Setup
@@ -120,13 +110,13 @@ ollama serve  # in one terminal
 
 # In another terminal
 pip install -r requirements.txt
-python3 cli.py
+codesmith
 ```
 
 ### Single Execution
 
 ```bash
-python3 cli.py -p "Write a Python function to calculate factorial"
+codesmith -p "Write a Python function to calculate factorial"
 ```
 
 ---
@@ -174,9 +164,9 @@ python3 cli.py -p "Write a Python function to calculate factorial"
 ### Architecture Highlights
 
 **Module Separation**
-- CLI logic isolated in `cli.py`
-- Ollama interaction abstracted in `llm.py`
-- Utilities grouped in `tools.py`
+- CLI logic isolated in `src/codesmith/cli.py`
+- Ollama interaction abstracted in `src/codesmith/llm.py`
+- Utilities grouped in `src/codesmith/tools.py`
 
 **Error Handling**
 - Custom exception classes (OllamaError, ToolsError)
@@ -215,12 +205,12 @@ python3 cli.py -p "Write a Python function to calculate factorial"
 
 ### Commands
 ```bash
-docker-compose up -d              # Start services
-docker-compose logs -f            # View logs
-docker-compose exec ollama ...    # Execute in Ollama container
-docker-compose run deepx-cli      # Run CLI
-docker-compose down               # Stop all
-docker-compose down -v            # Stop + remove volumes
+docker compose up -d              # Start services
+docker compose logs -f            # View logs
+docker compose exec ollama ...    # Execute in Ollama container
+docker compose run codesmith-cli      # Run CLI
+docker compose down               # Stop all
+docker compose down -v            # Stop + remove volumes
 ```
 
 ---
@@ -254,7 +244,7 @@ docker-compose down -v            # Stop + remove volumes
 - Security analysis
 - Extension points for customization
 
-### 4. **setup.sh** (Automated Setup)
+### 4. **scripts/setup.sh** (Automated Setup)
 - Docker detection
 - Service orchestration
 - Model pulling
@@ -307,9 +297,6 @@ docker-compose down -v            # Stop + remove volumes
 **File Commands**
 - `/write <file>` - Save generated code
 
-**Shell Commands**
-- Works with Python, npm, docker, git, etc.
-
 **Context Management**
 - `@<file>` - Include in prompts
 
@@ -323,16 +310,16 @@ docker-compose down -v            # Stop + remove volumes
 ## 📊 USAGE STATISTICS
 
 ### Lines of Code
-- **cli.py**: ~250 lines (REPL + commands)
-- **llm.py**: ~150 lines (API client)
-- **tools.py**: ~200 lines (utilities)
+- **src/codesmith/cli.py**: ~250 lines (REPL + commands)
+- **src/codesmith/llm.py**: ~150 lines (API client)
+- **src/codesmith/tools.py**: ~200 lines (utilities)
 - **Total**: ~600 lines of production code
 
 ### Configuration Files
 - **requirements.txt**: 2 dependencies
 - **Dockerfile**: 10 lines (lean image)
 - **docker-compose.yml**: 35 lines (complete stack)
-- **setup.sh**: 60 lines (automated setup)
+- **scripts/setup.sh**: 60 lines (automated setup)
 
 ### Documentation
 - **README.md**: ~400 lines (comprehensive)
@@ -356,7 +343,7 @@ docker-compose down -v            # Stop + remove volumes
 - Error isolation
 
 ✅ **Network**
-- Local Ollama only (in docker-compose)
+- Local Ollama only (in compose)
 - No external API calls
 - Timeout on all requests
 - Connection validation
@@ -366,19 +353,19 @@ docker-compose down -v            # Stop + remove volumes
 ## 🚀 NEXT STEPS
 
 ### To Start Using
-1. Run `cd /Users/aditya/Projects/DeepX`
-2. Execute `./setup.sh` or `docker-compose up -d`
-3. Run `docker-compose run --rm deepx-cli`
+1. Run `cd /path/to/CodeSmith`
+2. Execute `bash scripts/setup.sh` or `docker compose up -d`
+3. Run `docker compose run --rm codesmith-cli`
 4. Type a prompt and start generating code!
 
 ### To Extend
 1. Read ARCHITECTURE.md for extension points
-2. Add new commands in cli.py
-3. Add new tools in tools.py
+2. Add new commands in src/codesmith/cli.py
+3. Add new tools in src/codesmith/tools.py
 4. Customize model in initialization
 
 ### To Deploy
-1. Use docker-compose for full stack
+1. Use docker compose for full stack
 2. Mount volumes for persistence
 3. Add authentication for shared access
 4. Configure Ollama for GPU acceleration

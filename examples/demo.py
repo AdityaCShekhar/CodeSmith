@@ -3,8 +3,8 @@
 
 from pathlib import Path
 
-from cli import DeepXCLI
-from tools import FileTools
+from codesmith.cli import CodeSmithCLI
+from codesmith.tools import FileTools
 
 
 def demo() -> None:
@@ -13,7 +13,7 @@ def demo() -> None:
     print("CodeSmith - Code Generation Demo")
     print("=" * 70)
 
-    cli = DeepXCLI()
+    cli = CodeSmithCLI()
 
     print("\n[1] Generate code")
     prompt = """Write a Python function called factorial that:
@@ -41,4 +41,3 @@ if __name__ == "__main__":
         demo()
     except KeyboardInterrupt:
         print("\nDemo interrupted")
-

@@ -2,7 +2,7 @@
 
 import requests
 import json
-from typing import Generator, Optional
+from typing import Generator, Union
 from urllib.parse import urljoin
 
 
@@ -14,7 +14,7 @@ class OllamaError(Exception):
 class OllamaClient:
     """Client for interacting with Ollama API."""
 
-    def __init__(self, base_url: str = "http://ollama:11434", model: str = "deepseek-coder:1.3b"):
+    def __init__(self, base_url: str = "http://localhost:11434", model: str = "deepseek-coder:1.3b"):
         """Initialize Ollama client.
         
         Args:
@@ -50,7 +50,7 @@ class OllamaClient:
         stream: bool = True,
         temperature: float = 0.7,
         top_p: float = 0.9,
-    ) -> Generator[str, None, None] | str:
+    ) -> Union[Generator[str, None, None], str]:
         """Generate code/text using Ollama.
         
         Args:
