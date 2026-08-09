@@ -255,7 +255,7 @@ class DeepXCLI:
     def _get_command_suggestions(self, partial: str = "") -> List[str]:
         """Get command suggestions for autocomplete."""
         all_commands = [
-            "write", "models", "qa",
+            "write", "models",
             "debug-files", "help", "exit"
         ]
         
@@ -340,7 +340,6 @@ class DeepXCLI:
         return {
             "write": "Generate code and save to file",
             "models": "List available models",
-            "qa": "Start multi-turn Q&A",
             "debug-files": "Show discovered files",
             "help": "Show full help",
             "exit": "Exit the application"
@@ -708,6 +707,47 @@ ask for it like: "I need to see @filename.py" or "Can you show me @other_file.py
             self._print_error(f"Generation failed: {str(e)}")
             return ""
 
+    def handle_prompt_with_file_requests(self, prompt: str, stream: bool = True) -> str:
+        """Generate a response and automatically load files requested by it.
+
+        File requests are followed until the model no longer asks for a new
+        existing file. There is intentionally no exchange-count limit.
+        """
+        current_prompt = prompt
+        files_accessed = set(self.context_files)
+        response = ""
+
+        while True:
+            response = self.handle_generate(current_prompt, stream=stream)
+            if not response:
+                return response
+
+            requested_files, _ = self._parse_file_requests(response)
+            new_files = [
+                filepath for filepath in requested_files
+                if filepath not in files_accessed
+            ]
+
+            files_loaded = []
+            for filepath in new_files:
+                try:
+                    FileTools.read_file(filepath)
+                    self.context_files.append(filepath)
+                    files_accessed.add(filepath)
+                    files_loaded.append(filepath)
+                    self._print_success(f"Included @{filepath} in the prompt")
+                except ToolsError as e:
+                    self._print_error(f"Could not include @{filepath}: {e}")
+
+            if not files_loaded:
+                return response
+
+            current_prompt = (
+                "Continue answering the original request using the files now "
+                "provided. Do not repeat the previous response.\n\n"
+                f"Original request:\n{prompt}"
+            )
+
     def handle_write(self, filepath: str) -> None:
         """Generate code from instructions and write it to a file.
         
@@ -790,7 +830,6 @@ ask for it like: "I need to see @filename.py" or "Can you show me @other_file.py
 \033[1mAvailable Commands:\033[0m
   \033[92m/write\033[0m <filename>     Generate code and save to file
   \033[92m/models\033[0m               List available models
-  \033[92m/qa\033[0m <question>       Start multi-turn Q&A
   \033[92m/debug-files\033[0m         Show discovered files
   \033[92m/help\033[0m                 Show this help
   \033[92m/exit\033[0m                 Exit
@@ -805,7 +844,6 @@ ask for it like: "I need to see @filename.py" or "Can you show me @other_file.py
 \033[1mCommands:\033[0m
   /write <filename>     Generate code from instructions and save it
   /models              List available models
-  /qa <question>        Start multi-turn Q&A
   /debug-files          Show discovered files
   /help                Show this help
   /exit                Exit the application
@@ -871,14 +909,6 @@ ask for it like: "I need to see @filename.py" or "Can you show me @other_file.py
                         elif command == "models":
                             self.handle_models()
                         
-                        elif command == "qa":
-                            if args:
-                                self.handle_qa_conversation(args)
-                            else:
-                                prompt = input("Ask your question: ").strip()
-                                if prompt:
-                                    self.handle_qa_conversation(prompt)
-                            
                         elif command == "debug-files":
                             # Debug command to show discovered files
                             workspace_paths = [
@@ -931,7 +961,10 @@ ask for it like: "I need to see @filename.py" or "Can you show me @other_file.py
                         clean_prompt = " ".join([w for w in words if not w.startswith("@")])
                         
                         if clean_prompt.strip():
-                            self.handle_generate(clean_prompt, stream=self.stream)
+                            self.handle_prompt_with_file_requests(
+                                clean_prompt,
+                                stream=self.stream,
+                            )
                         
                         # Restore original context
                         self.context_files = original_context
