@@ -1,4 +1,4 @@
-"""CLI entry point for the structured CodeSmith coding-agent runtime."""
+"""CodeSmith repository-aware coding-agent CLI."""
 
 from __future__ import annotations
 
@@ -32,10 +32,9 @@ def _request_for_command(command: str, value: str | None) -> str:
     return value or "Inspect this repository and summarize its structure."
 
 
-async def _run(args: argparse.Namespace, request: str) -> int:
+async def run_request(args: argparse.Namespace, request: str) -> int:
     root = Path(args.repository).resolve()
-    confirm = None if args.auto else _confirmation
-    repository = RepositoryTools(root, confirm=confirm)
+    repository = RepositoryTools(root, confirm=None if args.auto else _confirmation)
     registry = default_registry(repository)
     provider = OllamaChatProvider(args.url, args.model)
 
@@ -51,18 +50,22 @@ async def _run(args: argparse.Namespace, request: str) -> int:
             print(f"[iteration {event['iteration']}]")
 
     rules = load_rules(root)
-    state = await AgentRuntime(provider, registry, args.max_iterations, event_handler=render).run(request, system_prompt=rules or None)
-
+    state = await AgentRuntime(
+        provider,
+        registry,
+        args.max_iterations,
+        event_handler=render,
+    ).run(request, system_prompt=rules or None)
     if args.debug:
         print(f"Iterations: {state.iteration}")
         print(f"Tool calls: {len(state.tool_calls)}")
         print(f"Stop reason: {state.stop_reason}")
-    print(state.final_response or "Agent finished without a final response.")
+    print(state.final_response or "CodeSmith finished without a final response.")
     return 0 if state.stop_reason == "completed" else 1
 
 
 def interactive_loop(args: argparse.Namespace) -> None:
-    print("CodeSmith agent interactive mode. Type /exit to quit.")
+    print("CodeSmith interactive mode. Type /exit to quit.")
     while True:
         try:
             request = input("> ").strip()
@@ -72,7 +75,7 @@ def interactive_loop(args: argparse.Namespace) -> None:
         if request in {"/exit", "/quit"}:
             return
         if request:
-            asyncio.run(_run(args, request))
+            asyncio.run(run_request(args, request))
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -97,13 +100,9 @@ def main() -> None:
     args.url = args.url or os.getenv("OLLAMA_URL", "http://localhost:11434")
     args.model = args.model or config["model"]["model"]
     args.max_iterations = args.max_iterations or config["agent"]["max_iterations"]
-    if args.command in {"review", "fix", "explain"}:
-        request = _request_for_command(args.command, args.value)
-    else:
-        request = args.request
+    request = _request_for_command(args.command, args.value) if args.command else args.request
     if request:
-        raise SystemExit(asyncio.run(_run(args, request)))
-
+        raise SystemExit(asyncio.run(run_request(args, request)))
     interactive_loop(args)
 
 

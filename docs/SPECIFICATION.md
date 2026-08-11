@@ -74,18 +74,18 @@ parsing and rendering, not the agent loop.
 The CLI MUST support interactive and one-shot usage:
 
 ```text
-codesmith-agent
-codesmith-agent "request"
-codesmith-agent --debug
-codesmith-agent --auto "request"
-codesmith-agent init
-codesmith-agent review
-codesmith-agent fix "request"
-codesmith-agent explain "request"
+codesmith
+codesmith "request"
+codesmith --debug
+codesmith --auto "request"
+codesmith init
+codesmith review
+codesmith fix "request"
+codesmith explain "request"
 ```
 
-The existing `codesmith` commands MUST continue to work during migration.
-All command forms MUST invoke the same agent runtime.
+All supported `codesmith` command forms MUST invoke the same repository-aware
+agent runtime.
 
 The terminal UI SHOULD distinguish model activity, tool execution, file
 changes, command execution, test results, and final status.
@@ -265,9 +265,8 @@ changes.
   escapes in the new repository tools.
 - [x] Block the initial set of destructive system commands.
 - [x] Add an Ollama chat provider that parses structured tool calls.
-- [x] Add the initial `codesmith-agent` one-shot and interactive CLI entry point.
+- [x] Add the CodeSmith one-shot and interactive repository-aware CLI entry point.
 - [x] Make repository-aware execution the default `codesmith` CLI behavior.
-- [x] Preserve the previous prompt-generation CLI behind `codesmith --legacy`.
 - [x] Add complete MVP tool parameter schemas and basic runtime argument
   validation.
 - [x] Convert unknown and malformed tool calls into recoverable observations.

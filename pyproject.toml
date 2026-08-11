@@ -19,7 +19,6 @@ dependencies = [
 [project.scripts]
 codesmith = "codesmith.cli:main"
 codesmith-batch = "codesmith.batch:main"
-codesmith-agent = "codesmith.devai:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]
