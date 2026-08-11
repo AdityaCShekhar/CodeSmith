@@ -107,7 +107,7 @@ docker compose down
 
 2. **In another terminal, pull the model:**
    ```bash
-   ollama pull deepseek-coder:1.3b
+   ollama pull qwen3
    ```
 
 3. **Install Python dependencies:**
@@ -147,12 +147,12 @@ codesmith -p "Write a Python function to calculate fibonacci"
 ### Custom Ollama URL and Model
 
 ```bash
-codesmith --url http://localhost:11434 --model deepseek-coder:1.3b
+codesmith --url http://localhost:11434 --model qwen3
 ```
 
 Or:
 ```bash
-codesmith --url http://localhost:11434 --model deepseek-coder:1.3b
+codesmith --url http://localhost:11434 --model qwen3
 ```
 
 ## Commands
@@ -262,7 +262,7 @@ options:
   -h, --help            show this help message and exit
   -u URL, --url URL     Ollama server URL (default: http://localhost:11434)
   -m MODEL, --model MODEL
-                        Model name (default: deepseek-coder:1.3b)
+                        Model name (default: qwen3)
   -p PROMPT, --prompt PROMPT
                         Single prompt to execute and exit
   --no-stream           Disable streaming mode
@@ -410,7 +410,7 @@ All operations include graceful error handling:
 ## Performance Tips
 
 1. **Use context wisely**: Only include relevant files to keep prompts concise
-2. **Model selection**: `deepseek-coder:1.3b` is optimized for code, but you can try other models
+2. **Model selection**: `qwen3` is the default because it supports native tool calling; you can try other models
 3. **Streaming**: Works best for faster feedback; disable with `--no-stream` if needed
 4. **Command timeouts**: Default is 30 seconds; adjust in code for long operations
 
@@ -470,7 +470,7 @@ The model is checked automatically on CLI startup. If it's not available:
 docker compose exec ollama ollama list
 
 # Manually pull if needed
-docker compose exec ollama ollama pull deepseek-coder:1.3b
+docker compose exec ollama ollama pull qwen3
 ```
 
 ### Slow responses

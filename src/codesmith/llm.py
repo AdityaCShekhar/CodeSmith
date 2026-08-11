@@ -2,8 +2,11 @@
 
 import requests
 import json
+import asyncio
 from typing import Generator, Union
 from urllib.parse import urljoin
+
+from .agent import ModelResponse
 
 
 class OllamaError(Exception):
@@ -11,10 +14,44 @@ class OllamaError(Exception):
     pass
 
 
+class OllamaChatProvider:
+    """Model-provider adapter for the agent runtime's structured chat loop."""
+
+    def __init__(self, base_url: str = "http://localhost:11434", model: str = "qwen3", timeout: int = 120):
+        self.base_url = base_url.rstrip("/")
+        self.model = model
+        self.timeout = timeout
+
+    async def generate(self, messages: list, tools: list) -> ModelResponse:
+        return await asyncio.to_thread(self._generate, messages, tools)
+
+    def _generate(self, messages: list, tools: list) -> ModelResponse:
+        payload = {"model": self.model, "messages": messages, "stream": False}
+        if tools:
+            payload["tools"] = [{"type": "function", "function": tool} for tool in tools]
+        try:
+            response = requests.post(f"{self.base_url}/api/chat", json=payload, timeout=self.timeout)
+            response.raise_for_status()
+            message = response.json().get("message", {})
+            calls = []
+            for call in message.get("tool_calls", []) or []:
+                function = call.get("function", call)
+                arguments = function.get("arguments", {})
+                if isinstance(arguments, str):
+                    try:
+                        arguments = json.loads(arguments)
+                    except json.JSONDecodeError:
+                        arguments = {}
+                calls.append({"name": function.get("name", ""), "arguments": arguments})
+            return ModelResponse(content=message.get("content", ""), tool_calls=calls)
+        except (requests.exceptions.RequestException, ValueError, TypeError) as exc:
+            raise OllamaError(f"Chat request failed: {exc}") from exc
+
+
 class OllamaClient:
     """Client for interacting with Ollama API."""
 
-    def __init__(self, base_url: str = "http://localhost:11434", model: str = "deepseek-coder:1.3b"):
+    def __init__(self, base_url: str = "http://localhost:11434", model: str = "qwen3"):
         """Initialize Ollama client.
         
         Args:

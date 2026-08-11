@@ -101,7 +101,7 @@ Option C: Local Python (requires Ollama running separately)
   $ codesmith
 
 Option D: Custom Ollama URL
-  $ codesmith --url http://localhost:11434 --model deepseek-coder:1.3b
+  $ codesmith --url http://localhost:11434 --model qwen3
 
 ═══════════════════════════════════════════════════════════════════════
 5️⃣  FIRST CODE GENERATION
@@ -111,7 +111,7 @@ After starting the CLI, you'll see:
 
   ━━ CodeSmith - Code Generation CLI ━━
   ℹ Connected to Ollama at http://ollama:11434
-  ℹ Using model: deepseek-coder:1.3b
+  ℹ Using model: qwen3
   ℹ Type /help for available commands
 
   >
@@ -208,9 +208,9 @@ Solution:
   • Verify with: curl http://localhost:11434/api/tags (if local)
   • Start Ollama: docker compose up -d ollama
 
-Problem: "Model deepseek-coder:1.3b not found"
+Problem: "Model qwen3 not found"
 Solution:
-  • Pull the model: docker compose exec ollama ollama pull deepseek-coder:1.3b
+  • Pull the model: docker compose exec ollama ollama pull qwen3
   • Check available: /models
 
 Problem: Slow responses

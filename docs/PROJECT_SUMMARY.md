@@ -98,7 +98,7 @@ bash scripts/setup.sh
 
 # Manual setup
 docker compose up -d ollama
-docker compose exec ollama ollama pull deepseek-coder:1.3b
+docker compose exec ollama ollama pull qwen3
 docker compose run --rm codesmith-cli
 ```
 

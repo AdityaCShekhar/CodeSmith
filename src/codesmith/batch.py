@@ -13,7 +13,7 @@ from pathlib import Path
 from .llm import OllamaClient
 from .tools import FileTools
 
-def generate_single(output_file: str, prompt: str, model: str = "deepseek-coder:1.3b", ollama_url: str = None) -> bool:
+def generate_single(output_file: str, prompt: str, model: str = "qwen3", ollama_url: str = None) -> bool:
     """Generate code and save to file."""
     try:
         client = OllamaClient(
@@ -118,8 +118,8 @@ JSON Format:
     
     parser.add_argument(
         "--model",
-        default="deepseek-coder:1.3b",
-        help="Model to use (default: deepseek-coder:1.3b)"
+        default="qwen3",
+        help="Model to use (default: qwen3)"
     )
     
     args = parser.parse_args()

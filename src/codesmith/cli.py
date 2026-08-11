@@ -3,6 +3,7 @@
 
 import sys
 import argparse
+import asyncio
 import traceback
 import time
 import os
@@ -110,7 +111,7 @@ def wait_for_ollama(host: str = None, timeout: int = 120) -> bool:
     return False
 
 
-def pull_model(model: str = "deepseek-coder:1.3b", host: str = None) -> bool:
+def pull_model(model: str = "qwen3", host: str = None) -> bool:
     """Pull model if not already available."""
     host = host or os.getenv("OLLAMA_URL", "http://localhost:11434")
     try:
@@ -176,7 +177,7 @@ def pull_model(model: str = "deepseek-coder:1.3b", host: str = None) -> bool:
         return True
 
 
-def initialize_system(ollama_url: str = None, model: str = "deepseek-coder:1.3b") -> bool:
+def initialize_system(ollama_url: str = None, model: str = "qwen3") -> bool:
     """Initialize and prepare the system for CodeSmith.
     
     Args:
@@ -272,7 +273,7 @@ class CodeSmithCLI:
     def __init__(
         self,
         ollama_url: str = None,
-        model: str = "deepseek-coder:1.3b",
+        model: str = "qwen3",
         stream: bool = True,
     ):
         """Initialize the CLI.
@@ -984,7 +985,7 @@ def main():
         epilog="""
 Examples:
   %(prog)s
-  %(prog)s --url http://localhost:11434 --model deepseek-coder:1.3b
+  %(prog)s --url http://localhost:11434 --model qwen3
   %(prog)s -p "Write a Python function to sort a list"
         """
     )
@@ -997,8 +998,8 @@ Examples:
 
     parser.add_argument(
         "-m", "--model",
-        default="deepseek-coder:1.3b",
-        help="Model name (default: deepseek-coder:1.3b)"
+        default="qwen3",
+        help="Model name (default: qwen3)"
     )
 
     parser.add_argument(
@@ -1018,9 +1019,46 @@ Examples:
         help="Skip Ollama initialization (for advanced users)"
     )
 
+    parser.add_argument(
+        "--agent",
+        action="store_true",
+        help="Use the repository-aware coding-agent runtime (default)"
+    )
+
+    parser.add_argument(
+        "--legacy",
+        action="store_true",
+        help="Use the previous prompt-generation CLI"
+    )
+
+    parser.add_argument(
+        "--auto",
+        action="store_true",
+        help="Automatically approve confirm-level agent operations"
+    )
+
     args = parser.parse_args()
 
     try:
+        if args.agent or not args.legacy:
+            from .devai import _run
+            from .devai import interactive_loop
+
+            # Reuse the structured agent CLI implementation while preserving
+            # the legacy CodeSmith prompt-generation path below.
+            agent_args = argparse.Namespace(
+                repository=".",
+                auto=args.auto,
+                url=args.url,
+                model=args.model,
+                max_iterations=20,
+                debug=False,
+            )
+            if args.prompt:
+                raise SystemExit(asyncio.run(_run(agent_args, args.prompt)))
+            interactive_loop(agent_args)
+            return
+
         # Initialize system if not skipped
         if not args.skip_init:
             if not initialize_system(args.url, args.model):

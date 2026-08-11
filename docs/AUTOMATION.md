@@ -173,7 +173,7 @@ Convert to batch config:
     {
       "output": "file2.py",
       "prompt": "Second file",
-      "model": "deepseek-coder:1.3b"
+      "model": "qwen3"
     }
   ]
 }
@@ -238,7 +238,7 @@ python3 -m json.tool batch.json
 ### Model not available
 ```bash
 docker compose exec ollama ollama list
-docker compose exec ollama ollama pull deepseek-coder:1.3b
+docker compose exec ollama ollama pull qwen3
 ```
 
 ## Batch JSON Schema

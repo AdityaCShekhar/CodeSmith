@@ -13,11 +13,13 @@ dependencies = [
     "Pygments==2.17.0",
     "prompt-toolkit==3.0.52",
     "colorama==0.4.6",
+    "PyYAML>=6.0",
 ]
 
 [project.scripts]
 codesmith = "codesmith.cli:main"
 codesmith-batch = "codesmith.batch:main"
+codesmith-agent = "codesmith.devai:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]

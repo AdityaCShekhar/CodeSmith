@@ -34,7 +34,7 @@ Usage: source scripts/commands.sh then run commands, or use directly:
 ${YELLOW}Setup & Initialization${NC}
   setup           - Automated setup with Docker
   build           - Build Docker images
-  pull-model      - Pull deepseek-coder model
+  pull-model      - Pull qwen3 model
   init            - Full initialization
 
 ${YELLOW}Running the CLI${NC}
@@ -116,7 +116,7 @@ cmd_setup() {
     fi
     
     echo -e "${BLUE}Pulling model (this may take 2-5 minutes)...${NC}"
-    compose exec -T ollama ollama pull deepseek-coder:1.3b || return 1
+    compose exec -T ollama ollama pull qwen3 || return 1
     
     echo -e "${GREEN}✅ Setup complete!${NC}"
     echo -e "${YELLOW}Next: bash scripts/commands.sh run${NC}"
@@ -130,8 +130,8 @@ cmd_build() {
 
 # Pull model
 cmd_pull_model() {
-    echo -e "${BLUE}Pulling deepseek-coder model...${NC}"
-    compose exec ollama ollama pull deepseek-coder:1.3b
+    echo -e "${BLUE}Pulling qwen3 model...${NC}"
+    compose exec ollama ollama pull qwen3
 }
 
 # Initialize (alias for setup)

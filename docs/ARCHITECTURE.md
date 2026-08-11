@@ -147,7 +147,7 @@ When generating:
    Content-Type: application/json
    
    {
-     "model": "deepseek-coder:1.3b",
+     "model": "qwen3",
      "prompt": "...",
      "stream": true,
      "options": {
@@ -164,7 +164,7 @@ When generating:
    Content-Type: application/json
    
    {
-     "model": "deepseek-coder:1.3b",
+     "model": "qwen3",
      "prompt": "...",
      "stream": false,
      "options": {
@@ -180,7 +180,7 @@ When generating:
 ### Environment Variables
 
 - `OLLAMA_URL`: Ollama server URL (default: `http://ollama:11434`)
-- `OLLAMA_MODEL`: Model name (default: `deepseek-coder:1.3b`)
+- `OLLAMA_MODEL`: Model name (default: `qwen3`)
 
 ### Command-Line Arguments
 
@@ -221,7 +221,7 @@ When generating:
    - Model has 2K token context window (typically)
 
 3. **Model Selection**:
-   - `deepseek-coder:1.3b`: Fast, good for code
+   - `qwen3`: Default tool-calling model for the repository-aware agent
    - Adjust based on hardware capabilities
    - Trade-off between speed and quality
 
