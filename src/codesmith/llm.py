@@ -17,7 +17,7 @@ class OllamaError(Exception):
 class OllamaChatProvider:
     """Model-provider adapter for the agent runtime's structured chat loop."""
 
-    def __init__(self, base_url: str = "http://localhost:11434", model: str = "qwen3", timeout: int = 120):
+    def __init__(self, base_url: str = "http://localhost:11434", model: str = "qwen3", timeout: int = 600):
         self.base_url = base_url.rstrip("/")
         self.model = model
         self.timeout = timeout
@@ -31,7 +31,15 @@ class OllamaChatProvider:
             payload["tools"] = [{"type": "function", "function": tool} for tool in tools]
         try:
             response = requests.post(f"{self.base_url}/api/chat", json=payload, timeout=self.timeout)
-            response.raise_for_status()
+            try:
+                response.raise_for_status()
+            except requests.exceptions.HTTPError as exc:
+                detail = response.text.strip()
+                if detail:
+                    raise OllamaError(
+                        f"Chat request failed ({response.status_code}): {detail}"
+                    ) from exc
+                raise
             message = response.json().get("message", {})
             calls = []
             for call in message.get("tool_calls", []) or []:
