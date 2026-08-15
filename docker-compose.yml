@@ -1,37 +1,14 @@
 name: codesmith
 
 services:
-  ollama:
-    image: ollama/ollama:latest
-    container_name: codesmith-ollama
-    ports:
-      - "11434:11434"
-    environment:
-      - OLLAMA_HOST=0.0.0.0:11434
-    volumes:
-      - ollama_data:/root/.ollama
-    healthcheck:
-      test: ["CMD", "ollama", "list"]
-      interval: 5s
-      timeout: 10s
-      retries: 30
-      start_period: 30s
-    stdin_open: true
-    tty: true
-
   codesmith-cli:
     build: .
-    depends_on:
-      ollama:
-        condition: service_started
     environment:
-      - OLLAMA_URL=http://ollama:11434
+      OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:-(your_openrouter_api_key_here)}
+      OPENROUTER_BASE_URL: ${OPENROUTER_BASE_URL:-https://openrouter.ai/api/v1}
     volumes:
       - .:/work
       - ./workspace:/workspace
     working_dir: /work
     stdin_open: true
     tty: true
-
-volumes:
-  ollama_data:

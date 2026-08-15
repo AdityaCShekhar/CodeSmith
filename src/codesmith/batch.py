@@ -10,15 +10,16 @@ import argparse
 import os
 from pathlib import Path
 
-from .llm import OllamaClient
+from .llm import DEFAULT_MODEL, OpenRouterClient
 from .tools import FileTools
 
-def generate_single(output_file: str, prompt: str, model: str = "qwen3", ollama_url: str = None) -> bool:
+def generate_single(output_file: str, prompt: str, model: str = DEFAULT_MODEL, openrouter_url: str = None) -> bool:
     """Generate code and save to file."""
     try:
-        client = OllamaClient(
-            ollama_url or os.getenv("OLLAMA_URL", "http://localhost:11434"),
-            model,
+        client = OpenRouterClient(
+            api_key=os.getenv("OPENROUTER_API_KEY"),
+            model=model,
+            base_url=openrouter_url or os.getenv("OPENROUTER_BASE_URL", "https://openrouter.ai/api/v1"),
         )
         
         print(f"\n📝 {output_file}")
@@ -118,8 +119,8 @@ JSON Format:
     
     parser.add_argument(
         "--model",
-        default="qwen3",
-        help="Model to use (default: qwen3)"
+        default=DEFAULT_MODEL,
+        help=f"OpenRouter model to use (default: {DEFAULT_MODEL})"
     )
     
     args = parser.parse_args()

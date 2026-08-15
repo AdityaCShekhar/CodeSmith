@@ -23,21 +23,18 @@ elif command -v docker &> /dev/null && docker compose version &> /dev/null; then
 fi
 
 if [ ${#COMPOSE_CMD[@]} -gt 0 ] && [ -f "$PROJECT_DIR/docker-compose.yml" ]; then
-    if "${COMPOSE_CMD[@]}" -f "$PROJECT_DIR/docker-compose.yml" ps ollama 2>/dev/null | grep -q "Up"; then
-        cd "$PROJECT_DIR"
-        exec "${COMPOSE_CMD[@]}" run --rm \
-            --entrypoint python3 \
-            -e WORK_DIR="$WORK_DIR" \
-            -e PYTHONPATH=/codesmith/src \
-            -v "$WORK_DIR:/work" \
-            -v "$PROJECT_DIR:/codesmith:ro" \
-            codesmith-cli -m codesmith "$@"
-    fi
+    cd "$PROJECT_DIR"
+    exec "${COMPOSE_CMD[@]}" run --rm \
+        --entrypoint python3 \
+        -e WORK_DIR="$WORK_DIR" \
+        -e PYTHONPATH=/codesmith/src \
+        -v "$WORK_DIR:/work" \
+        -v "$PROJECT_DIR:/codesmith:ro" \
+        codesmith-cli -m codesmith "$@"
 fi
 
 if [ -f "$PROJECT_DIR/src/codesmith/__main__.py" ]; then
     export PYTHONPATH="$PROJECT_DIR/src${PYTHONPATH:+:$PYTHONPATH}"
-    export OLLAMA_URL="${OLLAMA_URL:-http://localhost:11434}"
     cd "$WORK_DIR"
     exec python3 -m codesmith "$@"
 fi

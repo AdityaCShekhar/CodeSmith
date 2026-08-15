@@ -7,6 +7,7 @@ to implement ``generate(messages, tools)`` and may return either
 
 from __future__ import annotations
 
+import json
 from dataclasses import dataclass, field
 from typing import Any, Callable, Dict, List, Protocol
 
@@ -17,6 +18,7 @@ from .tools import Permission, RepositoryTools, ToolRegistry, ToolResult
 class ModelResponse:
     content: str = ""
     tool_calls: List[Dict[str, Any]] = field(default_factory=list)
+    reasoning_details: Any = None
 
 
 class ModelProvider(Protocol):
@@ -91,6 +93,22 @@ class AgentRuntime:
                 self._emit("completed", iteration=state.iteration)
                 break
 
+            # Keep the assistant tool-call message in the conversation. OpenRouter
+            # uses this message when continuing a reasoning/tool-call turn.
+            assistant_message = {"role": "assistant", "content": getattr(response, "content", "")}
+            reasoning_details = getattr(response, "reasoning_details", None)
+            if reasoning_details is not None:
+                assistant_message["reasoning_details"] = reasoning_details
+            if calls:
+                assistant_message["tool_calls"] = [
+                    {"id": call.get("id") or f"call_{index}", "type": "function", "function": {
+                        "name": call["name"],
+                        "arguments": json.dumps(call.get("arguments") or {}),
+                    }}
+                    for index, call in enumerate(calls)
+                ]
+            state.messages.append(assistant_message)
+
             for call in calls:
                 name = call.get("name")
                 arguments = call.get("arguments") or {}
@@ -106,7 +124,13 @@ class AgentRuntime:
                     state.files_read.add(arguments.get("path", ""))
                 if name == "write_file" and result.ok:
                     state.files_modified.add(arguments.get("path", ""))
-                state.messages.append({"role": "tool", "name": name, "content": result.output, "ok": result.ok})
+                tool_message = {"role": "tool", "content": result.output}
+                if call.get("id"):
+                    tool_message["tool_call_id"] = call["id"]
+                else:
+                    # Retain the name for providers that use the older tool format.
+                    tool_message["name"] = name
+                state.messages.append(tool_message)
 
         if not state.completed:
             state.stop_reason = "max_iterations"

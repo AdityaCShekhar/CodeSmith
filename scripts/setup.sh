@@ -39,6 +39,11 @@ fi
 echo "✓ Docker Compose is installed"
 echo ""
 
+if [ -z "${OPENROUTER_API_KEY:-}" ]; then
+    echo "❌ OPENROUTER_API_KEY is not set. Export it before running setup."
+    exit 1
+fi
+
 echo "🚀 Starting CodeSmith Environment..."
 echo ""
 
@@ -47,29 +52,7 @@ echo "1️⃣  Building Docker image..."
 compose build
 
 echo ""
-echo "2️⃣  Starting Ollama service..."
-compose up -d ollama
-
-echo ""
-echo "⏳ Waiting for Ollama to be ready..."
-sleep 5
-
-# Check if Ollama is healthy
-max_attempts=30
-attempt=0
-while [ $attempt -lt $max_attempts ]; do
-    if compose exec ollama curl -s http://localhost:11434/api/tags > /dev/null 2>&1; then
-        echo "✓ Ollama is online"
-        break
-    fi
-    sleep 2
-    attempt=$((attempt+1))
-done
-
-if [ $attempt -eq $max_attempts ]; then
-    echo "⚠️  Ollama is taking longer than expected"
-    echo "   Continue with: docker compose run --rm codesmith-cli"
-fi
+echo "2️⃣  OpenRouter API key detected"
 
 echo ""
 echo "✅ Setup complete!"
@@ -78,7 +61,7 @@ echo "🎯 Next Steps:"
 echo "   - Start the CLI:       codesmith"
 echo "   - Or with docker:      docker compose run --rm codesmith-cli"
 echo "   - Check status:        docker compose ps"
-echo "   - View logs:           docker compose logs ollama"
+echo "   - Set model:           docker compose run --rm codesmith-cli --model openai/gpt-oss-20b:free"
 echo "   - Stop services:       docker compose down"
 echo ""
 echo "📚 For more info, see README.md"

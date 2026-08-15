@@ -7,7 +7,7 @@ from typing import Any, Dict
 
 
 DEFAULT_CONFIG = {
-    "model": {"provider": "ollama", "model": "qwen3", "temperature": 0.1},
+    "model": {"provider": "openrouter", "model": "openai/gpt-oss-20b:free", "temperature": 0.1},
     "agent": {"max_iterations": 20, "auto_test": True},
     "permissions": {"file_write": "confirm", "file_delete": "confirm", "shell": "confirm"},
     "search": {"backend": "ripgrep"},

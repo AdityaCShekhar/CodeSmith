@@ -34,7 +34,7 @@ Usage: source scripts/commands.sh then run commands, or use directly:
 ${YELLOW}Setup & Initialization${NC}
   setup           - Automated setup with Docker
   build           - Build Docker images
-  pull-model      - Pull qwen3 model
+  pull-model      - Show OpenRouter model information
   init            - Full initialization
 
 ${YELLOW}Running the CLI${NC}
@@ -43,11 +43,10 @@ ${YELLOW}Running the CLI${NC}
   run-no-stream   - Run without streaming
 
 ${YELLOW}Docker Management${NC}
-  start           - Start Ollama service
+  start           - Start the CodeSmith container
   stop            - Stop all services
   restart         - Restart services
   logs            - View service logs
-  logs-ollama     - View Ollama logs only
   ps              - Show running processes
   clean           - Stop and remove containers
   clean-all       - Stop, remove containers, AND volumes
@@ -55,9 +54,6 @@ ${YELLOW}Docker Management${NC}
 ${YELLOW}Development & Testing${NC}
   demo            - Run demonstration script
   shell-cli       - SSH into CLI container
-  shell-ollama    - SSH into Ollama container
-  test-connection - Test Ollama connection
-  list-models     - List available models
   inspect         - Inspect Docker images and containers
 
 ${YELLOW}Utilities${NC}
@@ -102,21 +98,10 @@ cmd_setup() {
     echo -e "${BLUE}Building Docker images...${NC}"
     compose build || return 1
     
-    echo -e "${BLUE}Starting Ollama service...${NC}"
-    compose up -d ollama || return 1
-    
-    echo -e "${BLUE}⏳ Waiting for Ollama to be ready...${NC}"
-    sleep 10
-    
-    # Check connection
-    if compose exec ollama curl -s http://localhost:11434/api/tags > /dev/null 2>&1; then
-        echo -e "${GREEN}✓ Ollama is healthy${NC}"
-    else
-        echo -e "${RED}⚠️  Ollama not responding yet, continuing anyway...${NC}"
+    if [ -z "${OPENROUTER_API_KEY:-}" ]; then
+        echo -e "${RED}❌ OPENROUTER_API_KEY is not set.${NC}"
+        return 1
     fi
-    
-    echo -e "${BLUE}Pulling model (this may take 2-5 minutes)...${NC}"
-    compose exec -T ollama ollama pull qwen3 || return 1
     
     echo -e "${GREEN}✅ Setup complete!${NC}"
     echo -e "${YELLOW}Next: bash scripts/commands.sh run${NC}"
@@ -130,8 +115,7 @@ cmd_build() {
 
 # Pull model
 cmd_pull_model() {
-    echo -e "${BLUE}Pulling qwen3 model...${NC}"
-    compose exec ollama ollama pull qwen3
+    echo -e "${YELLOW}OpenRouter models are hosted remotely; no local model pull is required.${NC}"
 }
 
 # Initialize (alias for setup)
@@ -158,13 +142,10 @@ cmd_run_no_stream() {
     compose run --rm codesmith-cli --no-stream
 }
 
-# Start Ollama
+# Start the CodeSmith container
 cmd_start() {
-    echo -e "${BLUE}Starting Ollama service...${NC}"
-    compose up -d ollama
-    echo -e "${YELLOW}Waiting for Ollama...${NC}"
-    sleep 5
-    compose logs ollama | tail -5
+    echo -e "${BLUE}Starting CodeSmith...${NC}"
+    compose run --rm codesmith-cli
 }
 
 # Stop all services
@@ -184,9 +165,9 @@ cmd_logs() {
     compose logs -f
 }
 
-# View Ollama logs
+# Retained command for compatibility with older scripts.
 cmd_logs_ollama() {
-    compose logs -f ollama
+    echo -e "${YELLOW}Ollama is no longer used; CodeSmith uses OpenRouter.${NC}"
 }
 
 # Show process status
@@ -220,22 +201,20 @@ cmd_shell_cli() {
     compose exec codesmith-cli /bin/sh
 }
 
-# Shell into Ollama
+# Retained command for compatibility with older scripts.
 cmd_shell_ollama() {
-    echo -e "${BLUE}Opening shell in Ollama container...${NC}"
-    compose exec ollama /bin/bash
+    echo -e "${YELLOW}Ollama is no longer used; use shell-cli instead.${NC}"
 }
 
 # Test connection
 cmd_test_connection() {
-    echo -e "${BLUE}Testing Ollama connection...${NC}"
-    curl -s http://localhost:11434/api/tags | python3 -m json.tool
+    echo -e "${BLUE}Testing OpenRouter configuration...${NC}"
+    test -n "${OPENROUTER_API_KEY:-}" && echo -e "${GREEN}✓ OPENROUTER_API_KEY is set${NC}" || echo -e "${RED}✗ OPENROUTER_API_KEY is not set${NC}"
 }
 
 # List models
 cmd_list_models() {
-    echo -e "${BLUE}Available models:${NC}"
-    compose exec ollama ollama list
+    echo -e "${BLUE}Default model: openai/gpt-oss-20b:free${NC}"
 }
 
 # Inspect resources
@@ -245,7 +224,7 @@ cmd_inspect() {
     echo -e "\n${BLUE}=== Running Containers ===${NC}"
     compose ps
     echo -e "\n${BLUE}=== Container Details ===${NC}"
-    compose exec ollama ollama list
+    echo -e "${BLUE}Model provider: OpenRouter${NC}"
 }
 
 # Show status
@@ -254,12 +233,10 @@ cmd_status() {
     echo -e "\n${BLUE}Containers:${NC}"
     compose ps
     
-    if compose exec ollama curl -s http://localhost:11434/api/tags > /dev/null 2>&1; then
-        echo -e "\n${GREEN}✓ Ollama is online${NC}"
-        echo -e "\n${BLUE}Models:${NC}"
-        compose exec ollama ollama list
+    if [ -n "${OPENROUTER_API_KEY:-}" ]; then
+        echo -e "\n${GREEN}✓ OpenRouter API key is configured${NC}"
     else
-        echo -e "\n${RED}✗ Ollama is offline${NC}"
+        echo -e "\n${RED}✗ OPENROUTER_API_KEY is not set${NC}"
     fi
 }
 

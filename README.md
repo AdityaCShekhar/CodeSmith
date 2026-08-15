@@ -1,14 +1,14 @@
 # CodeSmith - Code Generation CLI
 
-A powerful CLI tool for code generation using a local Ollama instance. Think of it as your personal OpenAI Codex alternative running on your machine. Built with Python, this tool provides an interactive REPL for generating code, reading, and writing files.
+A powerful CLI tool for code generation using OpenRouter's API. Built with Python, this tool provides an interactive REPL for generating code, reading, and writing files.
 
 ## Features
 
 - 🚀 **Code Generation**: Generate code from natural language prompts
 - 📝 **File Operations**: Read, write, and manage files seamlessly
 - 🧠 **Context Injection**: Include file contents in prompts for context-aware generation
-- 📊 **Streaming Support**: Real-time token streaming from Ollama
-- 🎯 **Multiple Models**: Support for any Ollama-hosted model
+- 📊 **Streaming Support**: Real-time token streaming from OpenRouter
+- 🎯 **Multiple Models**: Support for OpenRouter models, including free models
 - 🎨 **Clean Output**: Formatted responses with color-coded sections
 - 🐳 **Docker Ready**: Easy deployment with Docker and Docker Compose
 
@@ -18,7 +18,7 @@ A powerful CLI tool for code generation using a local Ollama instance. Think of 
 CodeSmith/
 ├── src/codesmith/          # Installable Python package
 │   ├── cli.py              # Interactive CLI and command handling
-│   ├── llm.py              # Ollama API client
+│   ├── llm.py              # OpenRouter API client
 │   ├── tools.py            # File and context utilities
 │   └── batch.py            # Batch-generation entry point
 ├── examples/               # Runnable examples and sample input
@@ -34,7 +34,7 @@ CodeSmith/
 ### Components
 
 - **src/codesmith/cli.py**: Interactive REPL with color-coded output and command handling
-- **src/codesmith/llm.py**: Ollama API client with streaming support and error handling
+- **src/codesmith/llm.py**: OpenRouter API client with tool calling, reasoning, streaming, and error handling
 - **src/codesmith/tools.py**: File I/O and context injection utilities
 - **src/codesmith/batch.py**: Non-interactive batch generation
 - **pyproject.toml**: Package metadata, dependencies, and CLI entry points
@@ -42,8 +42,7 @@ CodeSmith/
 ## Requirements
 
 - Python 3.8+
-- Docker & Docker Compose (for containerized setup)
-- OR Ollama running locally at `http://localhost:11434`
+- An OpenRouter API key (free models are supported)
 
 ## Quick Command Setup
 
@@ -78,7 +77,7 @@ Windows automatically uses `codesmith.cmd`; macOS and Linux use `codesmith`.
 
 ## Installation & Setup
 
-### Option 1: Docker Compose (Recommended)
+### Option 1: OpenRouter API (Recommended)
 
 The easiest way to run everything together:
 
@@ -86,37 +85,23 @@ The easiest way to run everything together:
 # Clone/navigate to the project
 cd /path/to/CodeSmith
 
-# Start Ollama (model auto-pulls when CLI starts)
-docker compose up -d
+# Configure your OpenRouter API key
+export OPENROUTER_API_KEY="your-key"
 
 # Run the CLI
 codesmith
-
-# Stop everything
-docker compose down
 ```
 
 ### Option 2: Local Installation
 
-1. **Ensure Ollama is running:**
+1. **Install Python dependencies:**
    ```bash
-   # Install Ollama from https://ollama.ai
-   # Then start the server
-   ollama serve
+   python3 -m pip install -e .
    ```
 
-2. **In another terminal, pull the model:**
+2. **Set your API key and run the CLI:**
    ```bash
-   ollama pull qwen3
-   ```
-
-3. **Install Python dependencies:**
-   ```bash
-   pip install -r requirements.txt
-   ```
-
-4. **Run the CLI:**
-   ```bash
+   export OPENROUTER_API_KEY="your-key"
    codesmith
    ```
 
@@ -144,15 +129,16 @@ Or:
 codesmith -p "Write a Python function to calculate fibonacci"
 ```
 
-### Custom Ollama URL and Model
+### Custom OpenRouter URL and Model
 
 ```bash
-codesmith --url http://localhost:11434 --model qwen3
+export OPENROUTER_API_KEY="your-key"
+codesmith --model openai/gpt-oss-20b:free
 ```
 
 Or:
 ```bash
-codesmith --url http://localhost:11434 --model qwen3
+codesmith --model openai/gpt-oss-20b:free
 ```
 
 ## Commands
@@ -188,6 +174,15 @@ prompt only:
 ```
 /models
 ```
+
+`/models` loads the current OpenRouter catalog and lists all free models. Models
+show their context size and whether tool calling is supported. Select one by
+number, or type `/models <number>` to select it directly. For repository tasks
+that need file inspection or writing, choose a model marked `Tool calling
+supported`.
+
+The interactive prompt uses the legacy CodeSmith layout with a cyan theme. Type
+`/` to open command suggestions, then press Enter to accept the first suggestion.
 
 **Show help:**
 ```
@@ -260,9 +255,10 @@ codesmith --help
 
 options:
   -h, --help            show this help message and exit
-  -u URL, --url URL     Ollama server URL (default: http://localhost:11434)
+  --url URL              OpenRouter API base URL (default: https://openrouter.ai/api/v1)
+  --api-key API_KEY      OpenRouter API key (or OPENROUTER_API_KEY)
   -m MODEL, --model MODEL
-                        Model name (default: qwen3)
+                        Model name (default: openai/gpt-oss-20b:free)
   -p PROMPT, --prompt PROMPT
                         Single prompt to execute and exit
   --no-stream           Disable streaming mode
@@ -323,42 +319,23 @@ codesmith-batch <output_file> "<prompt>"
 # Batch from JSON
 codesmith-batch <config.json>
 
-# With custom model
-codesmith-batch <output_file> "<prompt>" --model mistral:latest
+# With a specific OpenRouter model
+codesmith-batch <output_file> "<prompt>" --model openai/gpt-oss-20b:free
 ```
 
 **See [AUTOMATION.md](docs/AUTOMATION.md) for complete automation guide**
 
 ## Docker Usage
 
-### Using Docker Compose (Complete Setup)
-
-```bash
-# Start both Ollama and CLI services
-docker compose up -d ollama
-
-# Start the CLI (automatically pulls model on first run)
-docker compose run --rm codesmith-cli
-
-# Or use the codesmith command shortcut
-codesmith
-
-# View Ollama logs
-docker compose logs ollama
-
-# Stop everything
-docker compose down -v
-```
-
-### Using Docker with Local Ollama
+The Docker image can run CodeSmith while using OpenRouter; no local model server is required.
 
 ```bash
 # Build the image
 docker build -t codesmith-cli .
 
-# Run the container (connect to local Ollama)
+# Run with your OpenRouter key
 docker run -it --rm \
-  -e OLLAMA_URL=http://host.docker.internal:11434 \
+  -e OPENROUTER_API_KEY="$OPENROUTER_API_KEY" \
   -v $(pwd)/workspace:/workspace \
   codesmith-cli
 ```
@@ -397,7 +374,7 @@ All operations include graceful error handling:
 - File not found errors
 - Permission issues
 - Command execution failures
-- Ollama connection problems
+- OpenRouter connection problems
 - Timeout handling
 
 ### Clean Output Formatting
@@ -410,74 +387,43 @@ All operations include graceful error handling:
 ## Performance Tips
 
 1. **Use context wisely**: Only include relevant files to keep prompts concise
-2. **Model selection**: `qwen3` is the default because it supports native tool calling; you can try other models
+2. **Model selection**: The default is `openai/gpt-oss-20b:free`; choose another OpenRouter model with `--model` or use `/models`
 3. **Streaming**: Works best for faster feedback; disable with `--no-stream` if needed
 4. **Command timeouts**: Default is 30 seconds; adjust in code for long operations
 
 ## Troubleshooting
 
-### Docker Compose Issues
+### "OPENROUTER_API_KEY is not set"
 
-#### "dependency failed to start: container codesmith-ollama is unhealthy"
-
-This happens when Docker Compose's health check times out. The fix:
+Export an OpenRouter key before starting CodeSmith:
 
 ```bash
-# Check if Ollama is actually running
-docker compose ps
+export OPENROUTER_API_KEY="your-key"
+```
 
-# View Ollama logs to see what's happening
-docker compose logs ollama --tail=50
+For Docker Compose, export the key on the host before starting the service:
 
-# Try restarting Ollama
-docker compose restart ollama
-
-# Clean restart (removes containers but keeps data)
-docker compose down
-docker compose up -d ollama
-docker compose run --rm codesmith-cli
-
-# Full clean (removes everything including volumes)
-docker compose down -v
-docker compose build
+```bash
+export OPENROUTER_API_KEY="your-key"
 docker compose run --rm codesmith-cli
 ```
 
-**Why it happens**: 
-- Ollama takes longer to start on first run (downloading model)
-- Docker health check is too strict
-- System resources (disk I/O, CPU) are limiting startup
+### OpenRouter free-model limits
 
-**CodeSmith handles this during startup**: It waits up to 2 minutes for Ollama to become ready.
+OpenRouter currently allows 50 free-model requests per day without purchased
+credits. Purchasing at least $10 in credits raises the free-model limit to
+1,000 requests per day. OpenRouter credits use USD, and purchases may include a
+service fee. Limits are account-specific and can change.
 
-### "Cannot connect to Ollama"
-
-Ensure Ollama is running:
-```bash
-# Check if Ollama is listening
-curl http://localhost:11434/api/tags
-
-# Or with docker
-docker compose exec ollama curl http://localhost:11434/api/tags
-```
-
-### Model not found
-
-The model is checked automatically on CLI startup. If it's not available:
-
-```bash
-# Check what's installed
-docker compose exec ollama ollama list
-
-# Manually pull if needed
-docker compose exec ollama ollama pull qwen3
-```
+If the daily limit is reached, wait for the reset or use an account with
+available credits. A `429` response is handled and displayed as a friendly
+quota message by CodeSmith.
 
 ### Slow responses
 
 - Reduce context file size
-- Use a faster model: `codesmith --model mistral:latest`
-- Increase Docker memory allocation (Settings → Resources)
+- Try another model from `/models`, or use `codesmith --model openrouter/free`
+- Check your OpenRouter model and account limits
 - Reduce temperature for faster inference (in code)
 
 ### Permission denied on file operations
@@ -500,10 +446,10 @@ ports:
 
 ### LLM Module (`src/codesmith/llm.py`)
 
-- **OllamaClient**: Manages communication with Ollama API
+- **OpenRouterClient**: Manages communication with OpenRouter API
 - **Streaming**: Real-time token generation
 - **Error Handling**: Connection validation and timeout management
-- **Model Management**: List available models
+- **Reasoning and tool calls**: Preserves OpenRouter reasoning details across tool iterations
 
 ### Tools Module (`src/codesmith/tools.py`)
 
