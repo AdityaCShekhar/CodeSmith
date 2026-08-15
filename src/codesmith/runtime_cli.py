@@ -11,6 +11,7 @@ import textwrap
 from pathlib import Path
 
 import requests
+from colorama import just_fix_windows_console
 from prompt_toolkit import PromptSession
 from prompt_toolkit.completion import Completer, Completion
 from prompt_toolkit.formatted_text import FormattedText
@@ -24,6 +25,10 @@ from .config import load_config
 from .context import load_rules
 from .llm import DEFAULT_MODEL, OpenRouterChatProvider, OpenRouterError
 from .tools import RepositoryTools
+
+
+# Enable ANSI styling on Windows consoles. On Unix-like systems this is a no-op.
+just_fix_windows_console()
 
 
 FALLBACK_FREE_MODELS = [
